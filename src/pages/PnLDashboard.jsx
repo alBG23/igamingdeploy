@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -25,161 +25,42 @@ import {
   Cell,
   BarChart
 } from 'recharts';
-import { ArrowUpRight, ArrowDownRight, Download, Settings, DollarSign, PlusCircle, AlertTriangle, Trash2, Check, Save, Target, ArrowRight, Calculator, Zap } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Download, Settings, DollarSign, PlusCircle, AlertTriangle, Trash2, Check, Save, Target, ArrowRight, Calculator, Zap, Shuffle, RefreshCw, HelpCircle, X } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Tooltip as UITooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Progress } from "@/components/ui/progress";
 
-// Sample data for P&L statement
+// Sample data for the P&L Dashboard
 const pnlData = [
-  {
-    month: 'Jan',
-    ftds: 100,
-    activePlayers: 200,
-    deposits: 50000,
-    ggr: 15000,
-    ngr: 12000,
-    acquisitionCosts: -4000,
-    gameProviderFees: -1500,
-    processingFees: -1000,
-    platformFees: -800,
-    salaries: -5000,
-    overheads: -2000,
-    marketingServices: -3000,
-    compliance: 0,
-    directCosts: -7300,
-    fixedCosts: -10000,
-    totalCosts: -17300,
-    pnl: -5300,
-    cumulativePnl: -5300
-  },
-  {
-    month: 'Feb',
-    ftds: 120,
-    activePlayers: 220,
-    deposits: 60000,
-    ggr: 18000,
-    ngr: 14500,
-    acquisitionCosts: -5000,
-    gameProviderFees: -1800,
-    processingFees: -1200,
-    platformFees: -900,
-    salaries: -5000,
-    overheads: -2000,
-    marketingServices: -3500,
-    compliance: 0,
-    directCosts: -8900,
-    fixedCosts: -10500,
-    totalCosts: -19400,
-    pnl: -4900,
-    cumulativePnl: -10200
-  },
-  {
-    month: 'Mar',
-    ftds: 140,
-    activePlayers: 250,
-    deposits: 70000,
-    ggr: 21000,
-    ngr: 17500,
-    acquisitionCosts: -6000,
-    gameProviderFees: -2100,
-    processingFees: -1400,
-    platformFees: -1000,
-    salaries: -5000,
-    overheads: -2000,
-    marketingServices: -4000,
-    compliance: 0,
-    directCosts: -10500,
-    fixedCosts: -11000,
-    totalCosts: -21500,
-    pnl: -4000,
-    cumulativePnl: -14200
-  },
-  {
-    month: 'Apr',
-    ftds: 160,
-    activePlayers: 270,
-    deposits: 80000,
-    ggr: 25000,
-    ngr: 21000,
-    acquisitionCosts: -7000,
-    gameProviderFees: -2500,
-    processingFees: -1600,
-    platformFees: -1200,
-    salaries: -5000,
-    overheads: -2000,
-    marketingServices: -4500,
-    compliance: 0,
-    directCosts: -12300,
-    fixedCosts: -11500,
-    totalCosts: -23800,
-    pnl: -2800,
-    cumulativePnl: -17000
-  },
-  {
-    month: 'May',
-    ftds: 180,
-    activePlayers: 300,
-    deposits: 90000,
-    ggr: 28000,
-    ngr: 24000,
-    acquisitionCosts: -8000,
-    gameProviderFees: -2800,
-    processingFees: -1800,
-    platformFees: -1300,
-    salaries: -5000,
-    overheads: -2000,
-    marketingServices: -5000,
-    compliance: 0,
-    directCosts: -13900,
-    fixedCosts: -12000,
-    totalCosts: -25900,
-    pnl: -1900,
-    cumulativePnl: -18900
-  },
-  {
-    month: 'Jun',
-    ftds: 200,
-    activePlayers: 320,
-    deposits: 100000,
-    ggr: 30000,
-    ngr: 26000,
-    acquisitionCosts: -9000,
-    gameProviderFees: -3000,
-    processingFees: -2000,
-    platformFees: -1500,
-    salaries: -5000,
-    overheads: -2000,
-    marketingServices: -5500,
-    compliance: 0,
-    directCosts: -15500,
-    fixedCosts: -12500,
-    totalCosts: -28000,
-    pnl: -2000,
-    cumulativePnl: -20900
-  }
+  { month: 'Jan', revenue: 520000, expenses: 470000, profit: 50000 },
+  { month: 'Feb', revenue: 580000, expenses: 490000, profit: 90000 },
+  { month: 'Mar', revenue: 550000, expenses: 480000, profit: 70000 },
+  { month: 'Apr', revenue: 620000, expenses: 520000, profit: 100000 },
+  { month: 'May', revenue: 640000, expenses: 550000, profit: 90000 },
+  { month: 'Jun', revenue: 720000, expenses: 600000, profit: 120000 },
 ];
 
-// Cost distribution data (last month)
 const costDistributionData = [
-  { name: 'Acquisition', value: 9000, percentage: 32 },
-  { name: 'Game Provider', value: 3000, percentage: 11 },
-  { name: 'Processing', value: 2000, percentage: 7 },
-  { name: 'Platform', value: 1500, percentage: 5 },
-  { name: 'Salaries', value: 5000, percentage: 18 },
-  { name: 'Overheads', value: 2000, percentage: 7 },
-  { name: 'Marketing Services', value: 5500, percentage: 20 },
+  { name: 'Player Acquisition', value: 35 },
+  { name: 'Marketing', value: 20 },
+  { name: 'Software', value: 15 },
+  { name: 'Operations', value: 12 },
+  { name: 'Compliance', value: 10 },
+  { name: 'Other', value: 8 },
 ];
 
-// Costs as % of NGR
 const ngrPercentageData = [
-  { name: 'Acquisition', value: 34.6 },
-  { name: 'GameProvider', value: 11.5 },
-  { name: 'Processing', value: 7.7 },
-  { name: 'Platform', value: 5.8 },
-  { name: 'Salaries', value: 19.2 },
-  { name: 'Overheads', value: 7.7 },
-  { name: 'MarketingServices', value: 21.2 },
+  { name: 'Slots', value: 45 },
+  { name: 'Live Casino', value: 25 },
+  { name: 'Sports Betting', value: 20 },
+  { name: 'Table Games', value: 10 },
 ];
 
 // Enhanced affiliate data with LTV and capacity information
@@ -194,7 +75,10 @@ const affiliateData = [
     retention: 'Medium',
     ltv_6month: 380,
     max_capacity: 120,
-    expected_cpa_at_max: 170
+    expected_cpa_at_max: 170,
+    roi: 2.53,
+    payback_months: 3.2,
+    profit_per_player: 230
   },
   { 
     id: 2, 
@@ -206,7 +90,10 @@ const affiliateData = [
     retention: 'High',
     ltv_6month: 450,
     max_capacity: 90,
-    expected_cpa_at_max: 200
+    expected_cpa_at_max: 200,
+    roi: 2.50,
+    payback_months: 2.8,
+    profit_per_player: 270
   },
   { 
     id: 3, 
@@ -218,7 +105,10 @@ const affiliateData = [
     retention: 'Low',
     ltv_6month: 290,
     max_capacity: 150,
-    expected_cpa_at_max: 130
+    expected_cpa_at_max: 130,
+    roi: 2.42,
+    payback_months: 3.8,
+    profit_per_player: 170
   },
   { 
     id: 4, 
@@ -230,7 +120,10 @@ const affiliateData = [
     retention: 'Medium',
     ltv_6month: 400,
     max_capacity: 100,
-    expected_cpa_at_max: 180
+    expected_cpa_at_max: 180,
+    roi: 2.50,
+    payback_months: 3.1,
+    profit_per_player: 240
   },
   { 
     id: 5, 
@@ -242,54 +135,25 @@ const affiliateData = [
     retention: 'Medium',
     ltv_6month: 320,
     max_capacity: 130,
-    expected_cpa_at_max: 150
+    expected_cpa_at_max: 150,
+    roi: 2.29,
+    payback_months: 3.5,
+    profit_per_player: 180
   },
 ];
 
 // Colors for charts
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#a480cf', '#ff6b6b', '#20c997', '#6f42c1'];
+const COLORS = ['#4F46E5', '#06B6D4', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981'];
 
 export default function PnLDashboard() {
-  const [period, setPeriod] = useState('6m');
-  const [currency, setCurrency] = useState('eur');
+  const [period, setPeriod] = useState('all');
   const [activeTab, setActiveTab] = useState('overview');
-  
-  // Cost settings state
-  const [costSettings, setCostSettings] = useState({
-    gameProviderFees: {
-      basedOn: 'ggr',
-      percentage: 10
-    },
-    processingFees: {
-      basedOn: 'deposits', 
-      percentage: 2
-    },
-    platformFees: {
-      basedOn: 'ngr',
-      percentage: 6
-    },
-    fixedCosts: {
-      salaries: 5000,
-      overheads: 2000
-    },
-    customCosts: [
-      {
-        id: 1,
-        name: 'Marketing Services',
-        type: 'fixed',
-        basedOn: null, 
-        amount: 3000
-      },
-      {
-        id: 2,
-        name: 'Compliance',
-        type: 'per_player',
-        basedOn: 'active_players',
-        amount: 5
-      }
-    ],
-    alertThreshold: 60
-  });
+  const [showSettings, setShowSettings] = useState(false);
+  const [customCosts, setCustomCosts] = useState([
+    { id: 1, name: 'Software Licensing', amount: 25000, category: 'fixed' },
+    { id: 2, name: 'Compliance Fees', amount: 15000, category: 'fixed' },
+    { id: 3, name: 'Staffing', amount: 45000, category: 'fixed' },
+  ]);
   
   // Target Calculator State
   const [targetNGR, setTargetNGR] = useState(800000);
@@ -303,14 +167,26 @@ export default function PnLDashboard() {
   const [affiliates, setAffiliates] = useState(affiliateData.map(aff => ({
     ...aff,
     allocatedFTDs: 0,
-    customMaxCapacity: aff.max_capacity,
-    customExpectedCPA: aff.expected_cpa_at_max
+    suggestedFTDs: 0, // New field for AI suggested optimal allocation
+    availableFTDs: aff.max_capacity, // User-editable field for available FTDs
+    customExpectedCPA: aff.expected_cpa_at_max, // User-editable eCPA field
+    isExpanded: false // For displaying more details
   })));
+  
+  const [optimizationCriteria, setOptimizationCriteria] = useState('balanced');
+  const [showOptimizationPanel, setShowOptimizationPanel] = useState(false);
+  const [planScore, setPlanScore] = useState({
+    roi: 0,
+    profitability: 0,
+    payback: 0,
+    overall: 0
+  });
 
-  // Calculate summary data
-  const totalNGR = pnlData.reduce((sum, month) => sum + month.ngr, 0);
-  const totalCosts = pnlData.reduce((sum, month) => sum + month.totalCosts, 0);
-  const cumulativePnL = pnlData[pnlData.length - 1].cumulativePnl;
+  // Summary calculations
+  const totalRevenue = pnlData.reduce((sum, item) => sum + item.revenue, 0);
+  const totalExpenses = pnlData.reduce((sum, item) => sum + item.expenses, 0);
+  const totalProfit = totalRevenue - totalExpenses;
+  const profitMargin = (totalProfit / totalRevenue) * 100;
   
   // Calculated values for target calculator
   const targetProfit = targetNGR * (targetProfitMargin / 100);
@@ -324,44 +200,165 @@ export default function PnLDashboard() {
       affiliate.customExpectedCPA : affiliate.cpa)), 0);
   const acquisitionBudgetPerMonth = Math.ceil(acquisitionBudget / timeframe);
 
-  // Calculate optimal allocation based on affiliate performance
+  // Enhanced optimal allocation calculation based on multiple factors
+  useEffect(() => {
+    // Calculate optimal allocation on initial load and when required FTDs changes
+    calculateOptimalAllocation();
+  }, [requiredFTDs, optimizationCriteria]);
+  
+  // Recalculate plan score whenever allocations change
+  useEffect(() => {
+    recalculatePlanScore();
+  }, [affiliates]);
+
+  // Calculate optimal allocation based on affiliate performance and selected criteria
   const calculateOptimalAllocation = () => {
-    // Simple algorithm - allocate FTDs based on cost efficiency (LTV / CPA ratio)
-    const affiliatesWithEfficiency = affiliateData.map(aff => ({
-      ...aff,
-      efficiency: aff.ltv_6month / aff.cpa,
-      availableCapacity: aff.max_capacity - aff.ftds_monthly
-    }))
-    .filter(aff => aff.availableCapacity > 0)
-    .sort((a, b) => b.efficiency - a.efficiency);
+    // Weight factors differently based on selected optimization criteria
+    let roiWeight = 1.0;
+    let paybackWeight = 1.0;
+    let profitWeight = 1.0;
     
+    switch(optimizationCriteria) {
+      case 'roi':
+        roiWeight = 2.0;
+        paybackWeight = 0.5;
+        profitWeight = 0.8;
+        break;
+      case 'fast-payback':
+        roiWeight = 0.8;
+        paybackWeight = 2.0;
+        profitWeight = 0.5;
+        break;
+      case 'profitability':
+        roiWeight = 0.8;
+        paybackWeight = 0.5;
+        profitWeight = 2.0;
+        break;
+      case 'balanced':
+      default:
+        // Keep default weights
+        break;
+    }
+    
+    // Calculate a weighted score for each affiliate
+    const affiliatesWithScore = affiliateData.map(aff => {
+      // Normalize the factors (payback is inverse - lower is better)
+      const normalizedROI = aff.roi / 3.0; // Assuming max ROI is around 3
+      const normalizedPayback = 1 - (aff.payback_months / 6.0); // Assuming 6 months is worst payback time
+      const normalizedProfit = aff.profit_per_player / 300; // Assuming max profit is around 300
+      
+      const overallScore = (normalizedROI * roiWeight) + 
+                           (normalizedPayback * paybackWeight) + 
+                           (normalizedProfit * profitWeight);
+      
+      return {
+        ...aff,
+        overallScore,
+        availableCapacity: aff.max_capacity
+      };
+    })
+    .sort((a, b) => b.overallScore - a.overallScore); // Sort by overall score, best first
+    
+    // Start with current monthly FTDs as baseline
     let remainingFTDs = requiredFTDs;
-    const newAllocation = affiliateData.map(aff => ({
-      ...aff,
-      allocatedFTDs: 0,
-      customMaxCapacity: aff.max_capacity,
-      customExpectedCPA: aff.expected_cpa_at_max
-    }));
+    const newAllocation = affiliateData.map(aff => {
+      const currentAff = affiliates.find(a => a.id === aff.id) || {
+        allocatedFTDs: 0,
+        availableFTDs: aff.max_capacity,
+        customExpectedCPA: aff.expected_cpa_at_max,
+        isExpanded: false
+      };
+      
+      return {
+        ...aff,
+        allocatedFTDs: currentAff.allocatedFTDs,
+        suggestedFTDs: 0, // Will be filled in next step
+        availableFTDs: currentAff.availableFTDs,
+        customExpectedCPA: currentAff.customExpectedCPA,
+        isExpanded: currentAff.isExpanded
+      };
+    });
     
-    // First, allocate the current monthly FTDs
+    // First, set all suggested FTDs to monthly FTDs as baseline
     newAllocation.forEach(aff => {
-      aff.allocatedFTDs = aff.ftds_monthly;
+      aff.suggestedFTDs = aff.ftds_monthly;
       remainingFTDs -= aff.ftds_monthly;
     });
     
-    // Then, allocate additional FTDs to most efficient affiliates first
-    for (const aff of affiliatesWithEfficiency) {
-      if (remainingFTDs <= 0) break;
+    // Then, allocate additional FTDs based on score, respecting available capacity
+    if (remainingFTDs > 0) {
+      // Sort by score for allocation
+      const sortedForAllocation = [...newAllocation].sort((a, b) => {
+        const scoreA = affiliatesWithScore.find(x => x.id === a.id)?.overallScore || 0;
+        const scoreB = affiliatesWithScore.find(x => x.id === b.id)?.overallScore || 0;
+        return scoreB - scoreA;
+      });
       
-      const thisAffInNewAllocation = newAllocation.find(a => a.id === aff.id);
-      const additionalCapacity = aff.availableCapacity;
-      const additionalFTDs = Math.min(additionalCapacity, remainingFTDs);
-      
-      thisAffInNewAllocation.allocatedFTDs += additionalFTDs;
-      remainingFTDs -= additionalFTDs;
+      for (const aff of sortedForAllocation) {
+        if (remainingFTDs <= 0) break;
+        
+        const additionalCapacity = aff.max_capacity - aff.suggestedFTDs;
+        if (additionalCapacity <= 0) continue;
+        
+        const additionalFTDs = Math.min(additionalCapacity, remainingFTDs);
+        aff.suggestedFTDs += additionalFTDs;
+        remainingFTDs -= additionalFTDs;
+      }
     }
     
     setAffiliates(newAllocation);
+  };
+  
+  const recalculatePlanScore = () => {
+    if (totalAllocatedFTDs === 0) {
+      setPlanScore({
+        roi: 0,
+        profitability: 0,
+        payback: 0,
+        overall: 0
+      });
+      return;
+    }
+    
+    // Calculate weighted averages of key metrics based on allocated FTDs
+    const totalAllocated = affiliates.reduce((sum, aff) => sum + aff.allocatedFTDs, 0);
+    
+    let weightedROI = 0;
+    let weightedPayback = 0;
+    let weightedProfit = 0;
+    
+    affiliates.forEach(aff => {
+      if (aff.allocatedFTDs > 0) {
+        const weight = aff.allocatedFTDs / totalAllocated;
+        weightedROI += aff.roi * weight;
+        weightedPayback += aff.payback_months * weight;
+        weightedProfit += aff.profit_per_player * weight;
+      }
+    });
+    
+    // Normalize scores to 0-100 scale
+    const roiScore = Math.min(100, (weightedROI / 3) * 100);
+    const paybackScore = Math.min(100, (1 - (weightedPayback / 6)) * 100);
+    const profitScore = Math.min(100, (weightedProfit / 300) * 100);
+    
+    // Calculate overall score (equal weights for simplicity)
+    const overallScore = (roiScore + paybackScore + profitScore) / 3;
+    
+    setPlanScore({
+      roi: roiScore,
+      profitability: profitScore,
+      payback: paybackScore,
+      overall: overallScore
+    });
+  };
+  
+  const applyOptimalAllocation = () => {
+    setAffiliates(prev => prev.map(aff => ({
+      ...aff,
+      allocatedFTDs: aff.suggestedFTDs
+    })));
+    
+    setShowOptimizationPanel(false);
   };
   
   const updateAffiliateAllocation = (id, ftds) => {
@@ -370,47 +367,48 @@ export default function PnLDashboard() {
     ));
   };
   
+  const updateAffiliateAvailableFTDs = (id, ftds) => {
+    setAffiliates(prev => prev.map(aff => 
+      aff.id === id ? { ...aff, availableFTDs: parseInt(ftds) || 0 } : aff
+    ));
+  };
+  
+  const updateAffiliateExpectedCPA = (id, cpa) => {
+    setAffiliates(prev => prev.map(aff => 
+      aff.id === id ? { ...aff, customExpectedCPA: parseInt(cpa) || 0 } : aff
+    ));
+  };
+  
+  const toggleAffiliateDetails = (id) => {
+    setAffiliates(prev => prev.map(aff => 
+      aff.id === id ? { ...aff, isExpanded: !aff.isExpanded } : aff
+    ));
+  };
+
+  // Handle custom costs
   const addCustomCost = () => {
-    const newCustomCost = {
+    const newCost = {
       id: Date.now(),
-      name: 'New Cost',
-      type: 'fixed',
-      basedOn: null,
-      amount: 0
+      name: "New Cost Item",
+      amount: 0,
+      category: "fixed"
     };
-    
-    setCostSettings({
-      ...costSettings,
-      customCosts: [...costSettings.customCosts, newCustomCost]
-    });
+    setCustomCosts([...customCosts, newCost]);
   };
   
   const removeCustomCost = (id) => {
-    setCostSettings({
-      ...costSettings,
-      customCosts: costSettings.customCosts.filter(cost => cost.id !== id)
-    });
+    setCustomCosts(customCosts.filter(cost => cost.id !== id));
   };
   
   const updateCustomCost = (id, field, value) => {
-    setCostSettings({
-      ...costSettings,
-      customCosts: costSettings.customCosts.map(cost => {
-        if (cost.id === id) {
-          if (field === 'type' && value === 'fixed') {
-            return { ...cost, [field]: value, basedOn: null };
-          }
-          return { ...cost, [field]: value };
-        }
-        return cost;
-      })
-    });
+    setCustomCosts(customCosts.map(cost => 
+      cost.id === id ? { ...cost, [field]: value } : cost
+    ));
   };
   
-  // Function to save cost settings
   const saveSettings = () => {
-    // In a real implementation, this would send the cost settings to your backend
-    alert('Settings saved successfully');
+    // In a real app, this would save the settings to backend
+    setShowSettings(false);
   };
 
   return (
@@ -420,17 +418,30 @@ export default function PnLDashboard() {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">P&L Dashboard</h1>
             <p className="text-gray-500">
-              Track revenues, costs and profitability over time
+              Track, analyze, and optimize your profit and loss
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline">
+            <Select value={period} onValueChange={setPeriod}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="Select period" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Time</SelectItem>
+                <SelectItem value="ytd">Year to Date</SelectItem>
+                <SelectItem value="q1">Q1 2023</SelectItem>
+                <SelectItem value="q2">Q2 2023</SelectItem>
+                <SelectItem value="q3">Q3 2023</SelectItem>
+                <SelectItem value="q4">Q4 2023</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button variant="outline" onClick={() => setShowSettings(!showSettings)}>
               <Settings className="h-4 w-4 mr-2" />
-              Edit Settings
+              Settings
             </Button>
             <Button variant="outline">
               <Download className="h-4 w-4 mr-2" />
-              Export CSV
+              Export
             </Button>
           </div>
         </div>
@@ -444,265 +455,126 @@ export default function PnLDashboard() {
           </TabsList>
           
           <TabsContent value="overview">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">
-                    Total NGR
+                    Total Revenue
                   </CardTitle>
-                  <DollarSign className="h-4 w-4 text-gray-500" />
+                  <ArrowUpRight className="h-4 w-4 text-green-600" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">€{totalNGR.toLocaleString()}</div>
+                  <div className="text-2xl font-bold">€{totalRevenue.toLocaleString()}</div>
+                  <p className="text-xs text-green-600">
+                    +12.3% from previous period
+                  </p>
                 </CardContent>
               </Card>
-              
+
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">
-                    Total Costs
+                    Total Expenses
                   </CardTitle>
-                  <DollarSign className="h-4 w-4 text-gray-500" />
+                  <ArrowUpRight className="h-4 w-4 text-red-600" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-red-600">€{totalCosts.toLocaleString()}</div>
+                  <div className="text-2xl font-bold">€{totalExpenses.toLocaleString()}</div>
+                  <p className="text-xs text-red-600">
+                    +8.7% from previous period
+                  </p>
                 </CardContent>
               </Card>
-              
+
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">
-                    Cumulative P&L
+                    Net Profit
                   </CardTitle>
-                  <DollarSign className="h-4 w-4 text-gray-500" />
+                  <ArrowUpRight className="h-4 w-4 text-green-600" />
                 </CardHeader>
                 <CardContent>
-                  <div className={`text-2xl font-bold ${cumulativePnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    €{cumulativePnL.toLocaleString()}
-                  </div>
+                  <div className="text-2xl font-bold">€{totalProfit.toLocaleString()}</div>
+                  <p className="text-xs text-green-600">
+                    Profit Margin: {profitMargin.toFixed(1)}%
+                  </p>
                 </CardContent>
               </Card>
             </div>
-            
-            <div className="mt-6">
-              <Card>
+
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mt-6">
+              <Card className="lg:col-span-2">
                 <CardHeader>
-                  <CardTitle>P&L Statement</CardTitle>
-                  <CardDescription>
-                    Monthly breakdown of revenues, costs and profit
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="font-semibold">Metric</TableHead>
-                        {pnlData.map((month) => (
-                          <TableHead key={month.month} className="text-right">{month.month}</TableHead>
-                        ))}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      <TableRow className="bg-gray-50">
-                        <TableCell colSpan={7} className="font-medium">Revenue & Player Metrics</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell>FTDs Count</TableCell>
-                        {pnlData.map((month) => (
-                          <TableCell key={month.month} className="text-right">{month.ftds}</TableCell>
-                        ))}
-                      </TableRow>
-                      <TableRow>
-                        <TableCell>Active Players</TableCell>
-                        {pnlData.map((month) => (
-                          <TableCell key={month.month} className="text-right">{month.activePlayers}</TableCell>
-                        ))}
-                      </TableRow>
-                      <TableRow>
-                        <TableCell>Deposits</TableCell>
-                        {pnlData.map((month) => (
-                          <TableCell key={month.month} className="text-right">€{month.deposits.toLocaleString()}</TableCell>
-                        ))}
-                      </TableRow>
-                      <TableRow>
-                        <TableCell>Gross Gaming Revenue (GGR)</TableCell>
-                        {pnlData.map((month) => (
-                          <TableCell key={month.month} className="text-right">€{month.ggr.toLocaleString()}</TableCell>
-                        ))}
-                      </TableRow>
-                      <TableRow>
-                        <TableCell>Net Gaming Revenue (NGR)</TableCell>
-                        {pnlData.map((month) => (
-                          <TableCell key={month.month} className="text-right font-medium">€{month.ngr.toLocaleString()}</TableCell>
-                        ))}
-                      </TableRow>
-                      
-                      <TableRow className="bg-gray-50">
-                        <TableCell colSpan={7} className="font-medium">Costs</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell>Acquisition Costs</TableCell>
-                        {pnlData.map((month) => (
-                          <TableCell key={month.month} className="text-right text-red-600">€{month.acquisitionCosts.toLocaleString()}</TableCell>
-                        ))}
-                      </TableRow>
-                      <TableRow>
-                        <TableCell>Game Provider Fees</TableCell>
-                        {pnlData.map((month) => (
-                          <TableCell key={month.month} className="text-right text-red-600">€{month.gameProviderFees.toLocaleString()}</TableCell>
-                        ))}
-                      </TableRow>
-                      <TableRow>
-                        <TableCell>Processing Fees</TableCell>
-                        {pnlData.map((month) => (
-                          <TableCell key={month.month} className="text-right text-red-600">€{month.processingFees.toLocaleString()}</TableCell>
-                        ))}
-                      </TableRow>
-                      <TableRow>
-                        <TableCell>Platform Fees</TableCell>
-                        {pnlData.map((month) => (
-                          <TableCell key={month.month} className="text-right text-red-600">€{month.platformFees.toLocaleString()}</TableCell>
-                        ))}
-                      </TableRow>
-                      <TableRow>
-                        <TableCell>Salaries</TableCell>
-                        {pnlData.map((month) => (
-                          <TableCell key={month.month} className="text-right text-red-600">€{month.salaries.toLocaleString()}</TableCell>
-                        ))}
-                      </TableRow>
-                      <TableRow>
-                        <TableCell>Overheads</TableCell>
-                        {pnlData.map((month) => (
-                          <TableCell key={month.month} className="text-right text-red-600">€{month.overheads.toLocaleString()}</TableCell>
-                        ))}
-                      </TableRow>
-                      <TableRow>
-                        <TableCell>Marketing Services</TableCell>
-                        {pnlData.map((month) => (
-                          <TableCell key={month.month} className="text-right text-red-600">€{month.marketingServices.toLocaleString()}</TableCell>
-                        ))}
-                      </TableRow>
-                      <TableRow>
-                        <TableCell>Compliance</TableCell>
-                        {pnlData.map((month) => (
-                          <TableCell key={month.month} className="text-right">€{month.compliance.toLocaleString()}</TableCell>
-                        ))}
-                      </TableRow>
-                      
-                      <TableRow className="bg-gray-50">
-                        <TableCell colSpan={7} className="font-medium">Summary</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell>Total Direct Costs</TableCell>
-                        {pnlData.map((month) => (
-                          <TableCell key={month.month} className="text-right text-red-600">€{month.directCosts.toLocaleString()}</TableCell>
-                        ))}
-                      </TableRow>
-                      <TableRow>
-                        <TableCell>Total Fixed Costs</TableCell>
-                        {pnlData.map((month) => (
-                          <TableCell key={month.month} className="text-right text-red-600">€{month.fixedCosts.toLocaleString()}</TableCell>
-                        ))}
-                      </TableRow>
-                      <TableRow>
-                        <TableCell>Total Costs</TableCell>
-                        {pnlData.map((month) => (
-                          <TableCell key={month.month} className="text-right font-medium text-red-600">€{month.totalCosts.toLocaleString()}</TableCell>
-                        ))}
-                      </TableRow>
-                      <TableRow>
-                        <TableCell>P&L</TableCell>
-                        {pnlData.map((month) => (
-                          <TableCell key={month.month} className={`text-right font-medium ${month.pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            €{month.pnl.toLocaleString()}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                      <TableRow>
-                        <TableCell>Cumulative P&L</TableCell>
-                        {pnlData.map((month) => (
-                          <TableCell key={month.month} className={`text-right font-medium ${month.cumulativePnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            €{month.cumulativePnl.toLocaleString()}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Revenue vs Costs</CardTitle>
-                  <CardDescription>
-                    Monthly breakdown of revenue and costs
-                  </CardDescription>
+                  <CardTitle>Revenue vs Expenses</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-80 w-full">
+                  <div className="h-[300px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <ComposedChart data={pnlData} margin={{ top: 10, right: 30, left: 20, bottom: 20 }}>
-                        <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                      <ComposedChart data={pnlData}>
+                        <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="month" />
                         <YAxis />
-                        <Tooltip formatter={(value) => `€${Math.abs(value).toLocaleString()}`} />
-                        <Legend />
-                        <Bar dataKey="ngr" name="NGR" fill="#4F46E5" />
-                        <Bar dataKey="totalCosts" name="Total Costs" fill="#EC4899" />
-                      </ComposedChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle>P&L Trend</CardTitle>
-                  <CardDescription>
-                    Monthly profit and loss with cumulative trend
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <ComposedChart data={pnlData} margin={{ top: 10, right: 30, left: 20, bottom: 20 }}>
-                        <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                        <XAxis dataKey="month" />
-                        <YAxis yAxisId="left" orientation="left" />
-                        <YAxis yAxisId="right" orientation="right" />
                         <Tooltip formatter={(value) => `€${value.toLocaleString()}`} />
                         <Legend />
-                        <Bar yAxisId="left" dataKey="pnl" name="Monthly P&L" fill="#10B981" />
-                        <Line yAxisId="right" type="monotone" dataKey="cumulativePnl" name="Cumulative P&L" stroke="#F59E0B" strokeWidth={2} />
+                        <Bar dataKey="revenue" name="Revenue" fill="#4F46E5" />
+                        <Bar dataKey="expenses" name="Expenses" fill="#EC4899" />
+                        <Line 
+                          type="monotone" 
+                          dataKey="profit" 
+                          name="Profit" 
+                          stroke="#10B981"
+                          strokeWidth={2} 
+                        />
                       </ComposedChart>
                     </ResponsiveContainer>
                   </div>
                 </CardContent>
               </Card>
-            </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+
               <Card>
                 <CardHeader>
                   <CardTitle>Cost Distribution</CardTitle>
-                  <CardDescription>
-                    Breakdown of costs as percentages
-                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-80 w-full">
-                    <h4 className="text-sm font-medium mb-2 text-center">Costs as % of NGR (Latest Month)</h4>
-                    <ResponsiveContainer width="100%" height="50%">
-                      <BarChart
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={costDistributionData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {costDistributionData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value) => `${value}%`} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>NGR by Product</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart 
+                        layout="vertical" 
                         data={ngrPercentageData}
-                        layout="vertical"
-                        margin={{ top: 5, right: 30, left: 60, bottom: 5 }}
+                        margin={{ left: 20 }}
                       >
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis type="number" tickFormatter={(value) => `${value}%`} />
-                        <YAxis type="category" dataKey="name" />
+                        <XAxis type="number" domain={[0, 100]} tickFormatter={(value) => `${value}%`} />
+                        <YAxis dataKey="name" type="category" width={80} />
                         <Tooltip formatter={(value) => `${value}%`} />
                         <Bar dataKey="value" fill="#8884d8">
                           {ngrPercentageData.map((entry, index) => (
@@ -711,52 +583,6 @@ export default function PnLDashboard() {
                         </Bar>
                       </BarChart>
                     </ResponsiveContainer>
-                    
-                    <div className="mt-8">
-                      <h4 className="text-sm font-medium mb-2 text-center">Costs as % of Total Costs (Latest Month)</h4>
-                      <ResponsiveContainer width="100%" height="40%">
-                        <PieChart>
-                          <Pie
-                            data={costDistributionData}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            outerRadius={80}
-                            fill="#8884d8"
-                            dataKey="value"
-                            nameKey="name"
-                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                          >
-                            {costDistributionData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip formatter={(value) => `€${value.toLocaleString()}`} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle>Target Calculator</CardTitle>
-                  <CardDescription>
-                    Use the Target Calculator tab to plan your profitability targets
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-col items-center justify-center h-64 text-center">
-                    <Target className="h-12 w-12 text-indigo-600 mb-4" />
-                    <h3 className="text-lg font-medium mb-2">Plan Your Financial Targets</h3>
-                    <p className="text-gray-500 mb-6 max-w-md">
-                      Set NGR goals, profit margin targets, and optimize your affiliate allocation to achieve profitability.
-                    </p>
-                    <Button onClick={() => setActiveTab('target-calculator')}>
-                      <Calculator className="h-4 w-4 mr-2" />
-                      Open Target Calculator
-                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -766,66 +592,44 @@ export default function PnLDashboard() {
           <TabsContent value="monthly">
             <Card>
               <CardHeader>
-                <CardTitle>Monthly P&L Statement</CardTitle>
+                <CardTitle>Monthly P&L Details</CardTitle>
                 <CardDescription>
-                  Detailed monthly breakdown of revenue and cost items
+                  Detailed breakdown of revenue, expenses and profit by month
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Month</TableHead>
-                        <TableHead className="text-right">GGR</TableHead>
-                        <TableHead className="text-right">Bonus Cost</TableHead>
-                        <TableHead className="text-right">Jackpot</TableHead>
-                        <TableHead className="text-right">NGR</TableHead>
-                        <TableHead className="text-right">Provider Fees</TableHead>
-                        <TableHead className="text-right">Processing</TableHead>
-                        <TableHead className="text-right">Platform</TableHead>
-                        <TableHead className="text-right">Fixed Costs</TableHead>
-                        <TableHead className="text-right">Total Costs</TableHead>
-                        <TableHead className="text-right">Profit</TableHead>
-                        <TableHead className="text-right">Margin</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {pnlData.map((item, index) => {
-                        const bonusCost = item.ggr - item.ngr;
-                        const jackpot = 0; // Assuming no jackpot for this data
-                        const fixedCosts = item.salaries + item.overheads;
-                        const margin = ((item.pnl / item.ngr) * 100).toFixed(1);
-                        
-                        return (
-                          <TableRow key={index}>
-                            <TableCell className="font-medium">{item.month}</TableCell>
-                            <TableCell className="text-right">€{item.ggr.toLocaleString()}</TableCell>
-                            <TableCell className="text-right">€{bonusCost.toLocaleString()}</TableCell>
-                            <TableCell className="text-right">€{jackpot.toLocaleString()}</TableCell>
-                            <TableCell className="text-right font-medium">€{item.ngr.toLocaleString()}</TableCell>
-                            <TableCell className="text-right">€{Math.abs(item.gameProviderFees).toLocaleString()}</TableCell>
-                            <TableCell className="text-right">€{Math.abs(item.processingFees).toLocaleString()}</TableCell>
-                            <TableCell className="text-right">€{Math.abs(item.platformFees).toLocaleString()}</TableCell>
-                            <TableCell className="text-right">€{Math.abs(fixedCosts).toLocaleString()}</TableCell>
-                            <TableCell className="text-right font-medium">€{Math.abs(item.totalCosts).toLocaleString()}</TableCell>
-                            <TableCell className="text-right font-medium text-red-600">€{item.pnl.toLocaleString()}</TableCell>
-                            <TableCell className="text-right">
-                              <Badge className={
-                                parseFloat(margin) > 0 ? "bg-green-100 text-green-800" : 
-                                parseFloat(margin) > -10 ? "bg-yellow-100 text-yellow-800" : 
-                                parseFloat(margin) > -20 ? "bg-orange-100 text-orange-800" : 
-                                "bg-red-100 text-red-800"
-                              }>
-                                {margin}%
-                              </Badge>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Month</TableHead>
+                      <TableHead className="text-right">Revenue</TableHead>
+                      <TableHead className="text-right">Expenses</TableHead>
+                      <TableHead className="text-right">Profit</TableHead>
+                      <TableHead className="text-right">Margin</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pnlData.map((month) => {
+                      const margin = (month.profit / month.revenue) * 100;
+                      return (
+                        <TableRow key={month.month}>
+                          <TableCell className="font-medium">{month.month}</TableCell>
+                          <TableCell className="text-right">€{month.revenue.toLocaleString()}</TableCell>
+                          <TableCell className="text-right">€{month.expenses.toLocaleString()}</TableCell>
+                          <TableCell className="text-right">€{month.profit.toLocaleString()}</TableCell>
+                          <TableCell className="text-right">{margin.toFixed(1)}%</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                    <TableRow className="bg-gray-50 font-semibold">
+                      <TableCell>Total</TableCell>
+                      <TableCell className="text-right">€{totalRevenue.toLocaleString()}</TableCell>
+                      <TableCell className="text-right">€{totalExpenses.toLocaleString()}</TableCell>
+                      <TableCell className="text-right">€{totalProfit.toLocaleString()}</TableCell>
+                      <TableCell className="text-right">{profitMargin.toFixed(1)}%</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
           </TabsContent>
@@ -833,354 +637,92 @@ export default function PnLDashboard() {
           <TabsContent value="cost-settings">
             <Card>
               <CardHeader>
-                <CardTitle>Cost Calculation Settings</CardTitle>
+                <CardTitle>Cost Configuration</CardTitle>
                 <CardDescription>
-                  Configure how costs are calculated in the P&L statement
+                  Manage fixed and variable costs for your P&L calculations
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {/* Game Provider Fees */}
-                  <div className="space-y-3">
-                    <h3 className="font-medium">Game Provider Fees</h3>
-                    <div className="space-y-2">
-                      <Label>Calculate Based On</Label>
-                      <Select 
-                        value={costSettings.gameProviderFees.basedOn} 
-                        onValueChange={(value) => setCostSettings({
-                          ...costSettings,
-                          gameProviderFees: { ...costSettings.gameProviderFees, basedOn: value }
-                        })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="ggr">Gross Gaming Revenue (GGR)</SelectItem>
-                          <SelectItem value="ngr">Net Gaming Revenue (NGR)</SelectItem>
-                          <SelectItem value="bets">Total Bets</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <Label>Percentage (%)</Label>
-                      </div>
-                      <div className="flex items-center">
-                        <Input 
-                          type="number" 
-                          value={costSettings.gameProviderFees.percentage}
-                          onChange={(e) => setCostSettings({
-                            ...costSettings,
-                            gameProviderFees: { 
-                              ...costSettings.gameProviderFees, 
-                              percentage: parseFloat(e.target.value) 
-                            }
-                          })}
-                          min={0}
-                          max={100}
-                          className="w-20 mr-2"
-                        />
-                        <span>%</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Processing Fees */}
-                  <div className="space-y-3">
-                    <h3 className="font-medium">Processing Fees</h3>
-                    <div className="space-y-2">
-                      <Label>Calculate Based On</Label>
-                      <Select 
-                        value={costSettings.processingFees.basedOn} 
-                        onValueChange={(value) => setCostSettings({
-                          ...costSettings,
-                          processingFees: { ...costSettings.processingFees, basedOn: value }
-                        })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="deposits">Deposits</SelectItem>
-                          <SelectItem value="withdrawals">Withdrawals</SelectItem>
-                          <SelectItem value="transactions">All Transactions</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <Label>Percentage (%)</Label>
-                      </div>
-                      <div className="flex items-center">
-                        <Input 
-                          type="number" 
-                          value={costSettings.processingFees.percentage}
-                          onChange={(e) => setCostSettings({
-                            ...costSettings,
-                            processingFees: { 
-                              ...costSettings.processingFees, 
-                              percentage: parseFloat(e.target.value) 
-                            }
-                          })}
-                          min={0}
-                          max={100}
-                          className="w-20 mr-2"
-                        />
-                        <span>%</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Platform Fees */}
-                  <div className="space-y-3">
-                    <h3 className="font-medium">Platform Fees</h3>
-                    <div className="space-y-2">
-                      <Label>Calculate Based On</Label>
-                      <Select 
-                        value={costSettings.platformFees.basedOn} 
-                        onValueChange={(value) => setCostSettings({
-                          ...costSettings,
-                          platformFees: { ...costSettings.platformFees, basedOn: value }
-                        })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="ngr">Net Gaming Revenue (NGR)</SelectItem>
-                          <SelectItem value="ggr">Gross Gaming Revenue (GGR)</SelectItem>
-                          <SelectItem value="active_players">Active Players</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <Label>Percentage (%)</Label>
-                      </div>
-                      <div className="flex items-center">
-                        <Input 
-                          type="number" 
-                          value={costSettings.platformFees.percentage}
-                          onChange={(e) => setCostSettings({
-                            ...costSettings,
-                            platformFees: { 
-                              ...costSettings.platformFees, 
-                              percentage: parseFloat(e.target.value) 
-                            }
-                          })}
-                          min={0}
-                          max={100}
-                          className="w-20 mr-2"
-                        />
-                        <span>%</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <Separator />
-                
-                {/* Fixed Costs */}
-                <div>
-                  <h3 className="font-medium mb-3">Fixed Costs</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label>Salaries (Fixed Amount)</Label>
-                      <div className="flex items-center">
-                        <span className="bg-gray-100 p-2 rounded-l-md border border-r-0">€</span>
-                        <Input 
-                          type="number" 
-                          value={costSettings.fixedCosts.salaries}
-                          onChange={(e) => setCostSettings({
-                            ...costSettings,
-                            fixedCosts: { 
-                              ...costSettings.fixedCosts, 
-                              salaries: parseInt(e.target.value) 
-                            }
-                          })}
-                          className="rounded-l-none"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label>Overheads (Fixed Amount)</Label>
-                      <div className="flex items-center">
-                        <span className="bg-gray-100 p-2 rounded-l-md border border-r-0">€</span>
-                        <Input 
-                          type="number" 
-                          value={costSettings.fixedCosts.overheads}
-                          onChange={(e) => setCostSettings({
-                            ...costSettings,
-                            fixedCosts: { 
-                              ...costSettings.fixedCosts, 
-                              overheads: parseInt(e.target.value) 
-                            }
-                          })}
-                          className="rounded-l-none"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <Separator />
-                
-                {/* Custom Costs */}
-                <div>
-                  <div className="flex justify-between mb-3">
-                    <h3 className="font-medium">Custom Costs</h3>
-                    <Button size="sm" variant="outline" onClick={addCustomCost}>
+              <CardContent>
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-medium">Custom Cost Items</h3>
+                    <Button size="sm" onClick={addCustomCost}>
                       <PlusCircle className="h-4 w-4 mr-2" />
-                      Add Custom Cost
+                      Add Cost Item
                     </Button>
                   </div>
                   
-                  <div className="space-y-4">
-                    {costSettings.customCosts.map((cost, index) => (
-                      <div key={cost.id} className="bg-gray-50 p-4 rounded-md border">
-                        <div className="flex justify-between items-center mb-3">
-                          <div className="space-y-2 flex-1">
-                            <Label>Cost Name</Label>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Cost Name</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {customCosts.map((cost) => (
+                        <TableRow key={cost.id}>
+                          <TableCell>
                             <Input 
-                              value={cost.name}
+                              value={cost.name} 
                               onChange={(e) => updateCustomCost(cost.id, 'name', e.target.value)}
-                              className="max-w-sm"
                             />
-                          </div>
-                          <Button 
-                            size="sm" 
-                            variant="ghost" 
-                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                            onClick={() => removeCustomCost(cost.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        
-                        <div className="space-y-4">
-                          <div className="space-y-2">
-                            <Label>Cost Type</Label>
+                          </TableCell>
+                          <TableCell>
                             <Select 
-                              value={cost.type} 
-                              onValueChange={(value) => updateCustomCost(cost.id, 'type', value)}
+                              value={cost.category} 
+                              onValueChange={(value) => updateCustomCost(cost.id, 'category', value)}
                             >
-                              <SelectTrigger className="max-w-sm">
+                              <SelectTrigger>
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="fixed">Fixed Amount</SelectItem>
-                                <SelectItem value="percentage">Percentage</SelectItem>
-                                <SelectItem value="per_player">Per Player</SelectItem>
+                                <SelectItem value="fixed">Fixed Cost</SelectItem>
+                                <SelectItem value="variable">Variable Cost</SelectItem>
+                                <SelectItem value="marketing">Marketing</SelectItem>
+                                <SelectItem value="operational">Operational</SelectItem>
                               </SelectContent>
                             </Select>
-                          </div>
-                          
-                          {cost.type === 'percentage' && (
-                            <div className="space-y-2">
-                              <Label>Based On</Label>
-                              <Select 
-                                value={cost.basedOn || ''} 
-                                onValueChange={(value) => updateCustomCost(cost.id, 'basedOn', value)}
-                              >
-                                <SelectTrigger className="max-w-sm">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="ngr">Net Gaming Revenue (NGR)</SelectItem>
-                                  <SelectItem value="ggr">Gross Gaming Revenue (GGR)</SelectItem>
-                                  <SelectItem value="deposits">Deposits</SelectItem>
-                                  <SelectItem value="withdrawals">Withdrawals</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          )}
-                          
-                          {cost.type === 'per_player' && (
-                            <div className="space-y-2">
-                              <Label>Based On</Label>
-                              <Select 
-                                value={cost.basedOn || ''} 
-                                onValueChange={(value) => updateCustomCost(cost.id, 'basedOn', value)}
-                              >
-                                <SelectTrigger className="max-w-sm">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="active_players">Active Players</SelectItem>
-                                  <SelectItem value="new_players">New Players</SelectItem>
-                                  <SelectItem value="depositing_players">Depositing Players</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          )}
-                          
-                          <div className="space-y-2">
-                            <Label>
-                              {cost.type === 'fixed' ? 'Amount' : 
-                               cost.type === 'percentage' ? 'Percentage (%)' : 
-                               'Amount per Player'}
-                            </Label>
+                          </TableCell>
+                          <TableCell className="text-right">
                             <div className="flex items-center">
-                              {cost.type !== 'percentage' && <span className="bg-gray-100 p-2 rounded-l-md border border-r-0">€</span>}
+                              <span className="mr-2">€</span>
                               <Input 
-                                type="number" 
-                                value={cost.amount}
-                                onChange={(e) => updateCustomCost(cost.id, 'amount', parseFloat(e.target.value))}
-                                className={cost.type !== 'percentage' ? "rounded-l-none max-w-xs" : "max-w-xs"}
+                                className="text-right w-32"
+                                type="number"
+                                value={cost.amount} 
+                                onChange={(e) => updateCustomCost(cost.id, 'amount', Number(e.target.value))}
                               />
-                              {cost.type === 'percentage' && <span className="ml-2">%</span>}
                             </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                          </TableCell>
+                          <TableCell>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => removeCustomCost(cost.id)}
+                              className="text-red-500 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  
+                  <div className="flex justify-end">
+                    <Button onClick={saveSettings}>
+                      <Save className="h-4 w-4 mr-2" />
+                      Save Settings
+                    </Button>
                   </div>
-                </div>
-                
-                <Separator />
-                
-                {/* Alert Settings */}
-                <div>
-                  <h3 className="font-medium mb-3">Alert Settings</h3>
-                  <div className="max-w-md space-y-2">
-                    <div className="flex justify-between">
-                      <Label htmlFor="alert-threshold">Cost Alert Threshold (% of NGR)</Label>
-                      <Badge variant="outline" className="font-mono">
-                        {costSettings.alertThreshold}%
-                      </Badge>
-                    </div>
-                    <Slider 
-                      id="alert-threshold"
-                      min={40} 
-                      max={90} 
-                      step={5}
-                      value={[costSettings.alertThreshold]}
-                      onValueChange={(value) => setCostSettings({
-                        ...costSettings,
-                        alertThreshold: value[0]
-                      })}
-                    />
-                    <p className="text-xs text-gray-500">
-                      Alert will be shown when costs exceed this percentage of NGR
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="flex justify-end gap-3 pt-4">
-                  <Button variant="outline">
-                    Cancel
-                  </Button>
-                  <Button onClick={saveSettings}>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Settings
-                  </Button>
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
-
+          
           <TabsContent value="target-calculator">
             <div className="space-y-8">
               <Card>
@@ -1362,7 +904,7 @@ export default function PnLDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-6">
-                    <div className="flex justify-between items-center">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                       <div className="space-y-1">
                         <h4 className="font-medium">Total Required FTDs: {requiredFTDs}</h4>
                         <p className="text-sm text-gray-500">
@@ -1370,13 +912,109 @@ export default function PnLDashboard() {
                         </p>
                       </div>
                       
-                      <div className="flex items-center gap-3">
-                        <Button variant="outline" size="sm" onClick={calculateOptimalAllocation}>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => setShowOptimizationPanel(!showOptimizationPanel)}
+                        >
+                          {showOptimizationPanel ? (
+                            <>
+                              <X className="h-4 w-4 mr-2" />
+                              Hide Options
+                            </>
+                          ) : (
+                            <>
+                              <Shuffle className="h-4 w-4 mr-2" />
+                              Optimization Options
+                            </>
+                          )}
+                        </Button>
+                        
+                        <Button 
+                          variant={showOptimizationPanel ? "default" : "outline"} 
+                          size="sm" 
+                          onClick={calculateOptimalAllocation}
+                        >
                           <Calculator className="h-4 w-4 mr-2" />
                           Calculate Optimal Allocation
                         </Button>
                       </div>
                     </div>
+                    
+                    {showOptimizationPanel && (
+                      <Card className="bg-slate-50 border-slate-200">
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-sm">Optimization Preferences</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                              <Label>Optimization Strategy</Label>
+                              <RadioGroup 
+                                value={optimizationCriteria} 
+                                onValueChange={setOptimizationCriteria}
+                                className="flex flex-wrap gap-4"
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="balanced" id="balanced" />
+                                  <Label htmlFor="balanced" className="cursor-pointer">Balanced</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="roi" id="roi" />
+                                  <Label htmlFor="roi" className="cursor-pointer">Maximize ROI</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="fast-payback" id="fast-payback" />
+                                  <Label htmlFor="fast-payback" className="cursor-pointer">Fastest Payback</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="profitability" id="profitability" />
+                                  <Label htmlFor="profitability" className="cursor-pointer">Highest Profit</Label>
+                                </div>
+                              </RadioGroup>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div className="space-y-1">
+                                <div className="flex items-center justify-between">
+                                  <Label className="text-xs">ROI Focus</Label>
+                                  <span className="text-xs font-medium">{planScore.roi.toFixed(0)}%</span>
+                                </div>
+                                <Progress value={planScore.roi} className="h-2" />
+                              </div>
+                              
+                              <div className="space-y-1">
+                                <div className="flex items-center justify-between">
+                                  <Label className="text-xs">Payback Speed</Label>
+                                  <span className="text-xs font-medium">{planScore.payback.toFixed(0)}%</span>
+                                </div>
+                                <Progress value={planScore.payback} className="h-2" />
+                              </div>
+                              
+                              <div className="space-y-1">
+                                <div className="flex items-center justify-between">
+                                  <Label className="text-xs">Profitability</Label>
+                                  <span className="text-xs font-medium">{planScore.profitability.toFixed(0)}%</span>
+                                </div>
+                                <Progress value={planScore.profitability} className="h-2" />
+                              </div>
+                            </div>
+                            
+                            <div className="flex justify-end pt-2">
+                              <Button 
+                                onClick={applyOptimalAllocation}
+                                size="sm"
+                                className="bg-amber-600 hover:bg-amber-700"
+                              >
+                                <RefreshCw className="h-4 w-4 mr-2" />
+                                Apply Suggested Allocation
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
                     
                     {ftdGap > 0 && (
                       <Alert className="bg-amber-50 border-amber-200 mb-4">
@@ -1401,53 +1039,171 @@ export default function PnLDashboard() {
                         <TableHeader>
                           <TableRow>
                             <TableHead>Affiliate</TableHead>
-                            <TableHead className="text-right">Current FTDs/mo</TableHead>
-                            <TableHead className="text-right">Max Capacity</TableHead>
-                            <TableHead className="text-right">CPA</TableHead>
-                            <TableHead className="text-right">Avg FTD Value</TableHead>
-                            <TableHead className="text-right">6-month LTV</TableHead>
+                            <TableHead className="text-right">Current Monthly</TableHead>
+                            <TableHead className="text-right">
+                              <TooltipProvider>
+                                <UITooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="flex items-center justify-end gap-1 cursor-help">
+                                      Suggested
+                                      <HelpCircle className="h-4 w-4 text-gray-400" />
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>AI-suggested optimal allocation based on ROI, payback time, and profitability</p>
+                                  </TooltipContent>
+                                </UITooltip>
+                              </TooltipProvider>
+                            </TableHead>
+                            <TableHead className="text-right">
+                              <TooltipProvider>
+                                <UITooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="flex items-center justify-end gap-1 cursor-help">
+                                      Available FTDs
+                                      <HelpCircle className="h-4 w-4 text-gray-400" />
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>How many FTDs can actually be purchased from this affiliate</p>
+                                  </TooltipContent>
+                                </UITooltip>
+                              </TooltipProvider>
+                            </TableHead>
+                            <TableHead className="text-right">
+                              <TooltipProvider>
+                                <UITooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="flex items-center justify-end gap-1 cursor-help">
+                                      Expected CPA
+                                      <HelpCircle className="h-4 w-4 text-gray-400" />
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Expected CPA when buying the planned volume</p>
+                                  </TooltipContent>
+                                </UITooltip>
+                              </TooltipProvider>
+                            </TableHead>
                             <TableHead className="text-right">Allocated FTDs</TableHead>
                             <TableHead className="text-right">Est. Cost</TableHead>
+                            <TableHead></TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {affiliates.map((affiliate) => {
-                            const isOverCapacity = affiliate.allocatedFTDs > affiliate.customMaxCapacity;
-                            const estimatedCost = affiliate.allocatedFTDs * 
-                              (affiliate.allocatedFTDs > affiliate.ftds_monthly ? 
-                                affiliate.customExpectedCPA : affiliate.cpa);
-                                
+                            const isOverCapacity = affiliate.allocatedFTDs > affiliate.availableFTDs;
+                            const estimatedCost = affiliate.allocatedFTDs * affiliate.customExpectedCPA;
+                            
                             return (
-                              <TableRow key={affiliate.id}>
-                                <TableCell className="font-medium">{affiliate.name}</TableCell>
-                                <TableCell className="text-right">{affiliate.ftds_monthly}</TableCell>
-                                <TableCell className="text-right">{affiliate.customMaxCapacity}</TableCell>
-                                <TableCell className="text-right">€{affiliate.cpa}</TableCell>
-                                <TableCell className="text-right">€{affiliate.avg_ftd_value}</TableCell>
-                                <TableCell className="text-right">€{affiliate.ltv_6month}</TableCell>
-                                <TableCell className="text-right">
-                                  <div className="flex items-center justify-end">
+                              <React.Fragment key={affiliate.id}>
+                                <TableRow>
+                                  <TableCell className="font-medium">
+                                    <div className="flex items-center gap-2">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="p-0 h-5 w-5"
+                                        onClick={() => toggleAffiliateDetails(affiliate.id)}
+                                      >
+                                        {affiliate.isExpanded ? 
+                                          <ArrowDownRight className="h-4 w-4" /> : 
+                                          <ArrowUpRight className="h-4 w-4" />
+                                        }
+                                      </Button>
+                                      {affiliate.name}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    {affiliate.ftds_monthly}
+                                  </TableCell>
+                                  <TableCell className="text-right font-medium text-amber-600">
+                                    {affiliate.suggestedFTDs}
+                                  </TableCell>
+                                  <TableCell className="text-right">
                                     <Input
                                       type="number"
-                                      value={affiliate.allocatedFTDs}
-                                      onChange={(e) => updateAffiliateAllocation(
+                                      value={affiliate.availableFTDs}
+                                      onChange={(e) => updateAffiliateAvailableFTDs(
                                         affiliate.id, e.target.value
                                       )}
-                                      min={0}
-                                      max={9999}
-                                      className={`w-20 text-right ${isOverCapacity ? 'border-orange-500' : ''}`}
+                                      className="w-20 text-right"
                                     />
-                                  </div>
-                                  {isOverCapacity && (
-                                    <p className="text-xs text-orange-600 mt-1">
-                                      Over capacity
-                                    </p>
-                                  )}
-                                </TableCell>
-                                <TableCell className="text-right font-medium">
-                                  €{estimatedCost.toLocaleString()}
-                                </TableCell>
-                              </TableRow>
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <div className="flex items-center justify-end">
+                                      <span className="mr-1">€</span>
+                                      <Input
+                                        type="number"
+                                        value={affiliate.customExpectedCPA}
+                                        onChange={(e) => updateAffiliateExpectedCPA(
+                                          affiliate.id, e.target.value
+                                        )}
+                                        className="w-20 text-right"
+                                      />
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <div className="flex items-center justify-end">
+                                      <Input
+                                        type="number"
+                                        value={affiliate.allocatedFTDs}
+                                        onChange={(e) => updateAffiliateAllocation(
+                                          affiliate.id, e.target.value
+                                        )}
+                                        min={0}
+                                        max={9999}
+                                        className={`w-20 text-right ${isOverCapacity ? 'border-orange-500' : ''}`}
+                                      />
+                                    </div>
+                                    {isOverCapacity && (
+                                      <p className="text-xs text-orange-600 mt-1">
+                                        Over capacity
+                                      </p>
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="text-right font-medium">
+                                    €{estimatedCost.toLocaleString()}
+                                  </TableCell>
+                                  <TableCell>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => updateAffiliateAllocation(
+                                        affiliate.id, affiliate.suggestedFTDs
+                                      )}
+                                      className="text-amber-600 hover:text-amber-700"
+                                    >
+                                      Apply
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                                
+                                {affiliate.isExpanded && (
+                                  <TableRow className="bg-slate-50">
+                                    <TableCell colSpan={8} className="py-2">
+                                      <div className="grid grid-cols-4 gap-4 px-8">
+                                        <div>
+                                          <p className="text-sm font-medium">ROI</p>
+                                          <p className="text-lg">{affiliate.roi.toFixed(2)}x</p>
+                                        </div>
+                                        <div>
+                                          <p className="text-sm font-medium">Payback Period</p>
+                                          <p className="text-lg">{affiliate.payback_months} months</p>
+                                        </div>
+                                        <div>
+                                          <p className="text-sm font-medium">Avg. FTD Value</p>
+                                          <p className="text-lg">€{affiliate.avg_ftd_value}</p>
+                                        </div>
+                                        <div>
+                                          <p className="text-sm font-medium">6-month LTV</p>
+                                          <p className="text-lg">€{affiliate.ltv_6month}</p>
+                                        </div>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                )}
+                              </React.Fragment>
                             );
                           })}
                         </TableBody>
@@ -1511,11 +1267,13 @@ export default function PnLDashboard() {
                             <span className="font-medium">€{Math.round(totalAllocatedFTDs * avgDepositValue * (1 + retentionRate/100)).toLocaleString()}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-sm">NGR/CPA Ratio:</span>
-                            <span className={`font-medium ${(totalAllocatedFTDs * avgDepositValue * (1 + retentionRate/100)) / acquisitionBudget > 1.5 ? 'text-green-600' : 'text-amber-600'}`}>
-                              {acquisitionBudget > 0 ? 
-                                ((totalAllocatedFTDs * avgDepositValue * (1 + retentionRate/100)) / acquisitionBudget).toFixed(2) : 
-                                'N/A'}
+                            <span className="text-sm">Plan Score:</span>
+                            <span className={`font-medium ${
+                              planScore.overall >= 70 ? 'text-green-600' :
+                              planScore.overall >= 50 ? 'text-amber-600' :
+                              'text-red-600'
+                            }`}>
+                              {planScore.overall.toFixed(0)}%
                             </span>
                           </div>
                         </div>
