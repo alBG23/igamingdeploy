@@ -1,9 +1,10 @@
+
 import React, { useState } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { ArrowUpRight, ArrowDownRight, BarChart, CheckCircle, Filter, BarChart3 } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Users, CreditCard, Activity, ArrowRight } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 
 export default function Dashboard() {
@@ -53,9 +54,9 @@ export default function Dashboard() {
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="mb-4">
               <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="affiliates">Affiliates</TabsTrigger>
-              <TabsTrigger value="payments">Payments</TabsTrigger>
-              <TabsTrigger value="benchmarks">Benchmarks</TabsTrigger>
+              <TabsTrigger value="acquisition">Acquisition</TabsTrigger>
+              <TabsTrigger value="revenue">Revenue</TabsTrigger>
+              <TabsTrigger value="players">Players</TabsTrigger>
             </TabsList>
           
             <TabsContent value="overview">
@@ -169,28 +170,56 @@ export default function Dashboard() {
                   </div>
 
                   <div>
-                    <Card>
+                    <Card className="h-full">
                       <CardHeader>
-                        <CardTitle>Platform Status</CardTitle>
+                        <CardTitle>Conversion Funnel</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between">
-                            <span>Data Syncing</span>
-                            <CheckCircle className="h-5 w-5 text-green-600" />
+                        <div className="space-y-8">
+                          <div className="relative">
+                            <div className="flex justify-between items-center mb-2">
+                              <div className="flex items-center gap-2">
+                                <Users className="h-5 w-5 text-blue-600" />
+                                <span className="font-medium">Visitors</span>
+                              </div>
+                              <span className="font-bold">12,450</span>
+                            </div>
+                            <div className="w-full h-12 bg-blue-100 rounded-lg flex items-center justify-center text-blue-700 font-medium">
+                              100%
+                            </div>
+                            <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2">
+                              <ArrowRight className="h-6 w-6 text-gray-400 rotate-90" />
+                            </div>
                           </div>
-                          <div className="flex items-center justify-between">
-                            <span>API Status</span>
-                            <CheckCircle className="h-5 w-5 text-green-600" />
+                          
+                          <div className="relative">
+                            <div className="flex justify-between items-center mb-2">
+                              <div className="flex items-center gap-2">
+                                <Activity className="h-5 w-5 text-indigo-600" />
+                                <span className="font-medium">Registrations</span>
+                              </div>
+                              <span className="font-bold">1,865</span>
+                            </div>
+                            <div className="w-full h-12 bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-700 font-medium">
+                              15%
+                            </div>
+                            <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2">
+                              <ArrowRight className="h-6 w-6 text-gray-400 rotate-90" />
+                            </div>
                           </div>
-                          <div className="flex items-center justify-between">
-                            <span>Database Health</span>
-                            <CheckCircle className="h-5 w-5 text-green-600" />
+                          
+                          <div className="relative">
+                            <div className="flex justify-between items-center mb-2">
+                              <div className="flex items-center gap-2">
+                                <CreditCard className="h-5 w-5 text-purple-600" />
+                                <span className="font-medium">First Deposit</span>
+                              </div>
+                              <span className="font-bold">685</span>
+                            </div>
+                            <div className="w-full h-12 bg-purple-100 rounded-lg flex items-center justify-center text-purple-700 font-medium">
+                              5.5%
+                            </div>
                           </div>
-                          <Button variant="outline" className="w-full mt-4">
-                            <BarChart3 className="h-4 w-4 mr-2" />
-                            View System Status
-                          </Button>
                         </div>
                       </CardContent>
                     </Card>
@@ -199,21 +228,94 @@ export default function Dashboard() {
               </div>
             </TabsContent>
 
-            <TabsContent value="affiliates">
-              <div className="flex items-center justify-center h-64 bg-white rounded-lg border">
-                <p className="text-gray-500">Affiliate analytics will be displayed here</p>
+            <TabsContent value="acquisition">
+              <div className="bg-white rounded-lg p-6 border">
+                <h2 className="text-xl font-bold mb-4">Acquisition Overview</h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-3">
+                    <h3 className="font-medium text-gray-800">Key Highlights</h3>
+                    <ul className="space-y-2">
+                      <li className="flex items-start">
+                        <ArrowUpRight className="h-5 w-5 text-green-600 mr-2 shrink-0 mt-0.5" />
+                        <span>Organic traffic increased 23% QoQ</span>
+                      </li>
+                      <li className="flex items-start">
+                        <ArrowUpRight className="h-5 w-5 text-green-600 mr-2 shrink-0 mt-0.5" />
+                        <span>Affiliate conversions up 12% MoM</span>
+                      </li>
+                      <li className="flex items-start">
+                        <ArrowDownRight className="h-5 w-5 text-red-600 mr-2 shrink-0 mt-0.5" />
+                        <span>CPA costs rising for social media</span>
+                      </li>
+                    </ul>
+                  </div>
+                  <div className="md:col-span-2">
+                    <p className="text-gray-600">
+                      Acquisition data shows strong performance in organic channels with room for optimization in paid social media. 
+                      SEO improvements have resulted in 35% higher landing page conversion rates.
+                    </p>
+                  </div>
+                </div>
               </div>
             </TabsContent>
 
-            <TabsContent value="payments">
-              <div className="flex items-center justify-center h-64 bg-white rounded-lg border">
-                <p className="text-gray-500">Payment analytics will be displayed here</p>
+            <TabsContent value="revenue">
+              <div className="bg-white rounded-lg p-6 border">
+                <h2 className="text-xl font-bold mb-4">Revenue Analysis</h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-3">
+                    <h3 className="font-medium text-gray-800">Key Highlights</h3>
+                    <ul className="space-y-2">
+                      <li className="flex items-start">
+                        <ArrowUpRight className="h-5 w-5 text-green-600 mr-2 shrink-0 mt-0.5" />
+                        <span>Slots revenue increased 15% YoY</span>
+                      </li>
+                      <li className="flex items-start">
+                        <ArrowUpRight className="h-5 w-5 text-green-600 mr-2 shrink-0 mt-0.5" />
+                        <span>Live dealer games growing at 28% YoY</span>
+                      </li>
+                      <li className="flex items-start">
+                        <ArrowDownRight className="h-5 w-5 text-red-600 mr-2 shrink-0 mt-0.5" />
+                        <span>Table games showing 5% decline</span>
+                      </li>
+                    </ul>
+                  </div>
+                  <div className="md:col-span-2">
+                    <p className="text-gray-600">
+                      Revenue data indicates strong performance in slots and live dealer verticals, with opportunities to revitalize table games through new promotions and UI improvements.
+                    </p>
+                  </div>
+                </div>
               </div>
             </TabsContent>
 
-            <TabsContent value="benchmarks">
-              <div className="flex items-center justify-center h-64 bg-white rounded-lg border">
-                <p className="text-gray-500">Benchmark analytics will be displayed here</p>
+            <TabsContent value="players">
+              <div className="bg-white rounded-lg p-6 border">
+                <h2 className="text-xl font-bold mb-4">Player Insights</h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-3">
+                    <h3 className="font-medium text-gray-800">Key Highlights</h3>
+                    <ul className="space-y-2">
+                      <li className="flex items-start">
+                        <ArrowUpRight className="h-5 w-5 text-green-600 mr-2 shrink-0 mt-0.5" />
+                        <span>30-day retention up to 42%</span>
+                      </li>
+                      <li className="flex items-start">
+                        <ArrowUpRight className="h-5 w-5 text-green-600 mr-2 shrink-0 mt-0.5" />
+                        <span>Mobile player base grew 18% QoQ</span>
+                      </li>
+                      <li className="flex items-start">
+                        <ArrowDownRight className="h-5 w-5 text-red-600 mr-2 shrink-0 mt-0.5" />
+                        <span>VIP segment showing 8% churn</span>
+                      </li>
+                    </ul>
+                  </div>
+                  <div className="md:col-span-2">
+                    <p className="text-gray-600">
+                      Player data shows improving retention metrics with mobile players becoming the dominant segment. Opportunity to address VIP churn with targeted reactivation campaigns.
+                    </p>
+                  </div>
+                </div>
               </div>
             </TabsContent>
           </Tabs>

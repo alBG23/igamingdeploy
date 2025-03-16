@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
-import { Brain, ChevronDown, SendIcon, X, FileText, BarChart, Volume2, Pause, DownloadCloud, Share2, RefreshCw, Loader2, Check, AlertTriangle } from 'lucide-react';
+import { Brain, ChevronDown, SendIcon, X, FileText, BarChart, Volume2, Pause, DownloadCloud, Share2, RefreshCw, Loader2, Check, AlertTriangle, Settings } from 'lucide-react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -8,6 +8,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ResponsiveContainer, BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell } from 'recharts';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { InvokeLLM } from "@/api/integrations";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 export default function FloatingChat() {
   const [isOpen, setIsOpen] = useState(false);
@@ -26,6 +30,12 @@ export default function FloatingChat() {
   const [audioProgress, setAudioProgress] = useState(0);
   const [audioSrc, setAudioSrc] = useState('');
   const [audioError, setAudioError] = useState(false);
+  const [aiSettings, setAiSettings] = useState({
+    model: "openai_gpt4",
+    voice: "alloy",
+    useTrainedModel: true,
+    useWebSearch: false
+  });
   const audioRef = useRef(null);
   const messagesEndRef = useRef(null);
   
@@ -118,7 +128,7 @@ export default function FloatingChat() {
           
           Previous conversation:
           ${conversationContext}`,
-          add_context_from_internet: false
+          add_context_from_internet: aiSettings.useWebSearch
         });
         
         setMessages(prev => [...prev, { 
@@ -150,7 +160,7 @@ export default function FloatingChat() {
           
           Previous conversation:
           ${conversationContext}`,
-          add_context_from_internet: false
+          add_context_from_internet: aiSettings.useWebSearch
         });
         
         setMessages(prev => [...prev, { 
@@ -180,7 +190,7 @@ export default function FloatingChat() {
           
           Previous conversation:
           ${conversationContext}`,
-          add_context_from_internet: false
+          add_context_from_internet: aiSettings.useWebSearch
         });
         
         setMessages(prev => [...prev, { 
@@ -339,16 +349,96 @@ export default function FloatingChat() {
             <CardHeader className="bg-indigo-600 text-white py-3 px-4 flex flex-row justify-between items-center">
               <CardTitle className="text-sm font-medium flex items-center">
                 <Brain className="h-4 w-4 mr-2" />
-                AI Analytics Assistant
+                AI Analytics Assistant {aiSettings.useTrainedModel && "(Trained Model)"}
               </CardTitle>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={() => setIsOpen(false)}
-                className="h-6 w-6 text-white hover:bg-indigo-700 rounded-full p-0"
-              >
-                <X className="h-4 w-4" />
-              </Button>
+              
+              <div className="flex items-center gap-2">
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6 text-white hover:bg-indigo-700 rounded-full p-0"
+                    >
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>AI Assistant Settings</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                      <div className="space-y-2">
+                        <Label>AI Model</Label>
+                        <Select
+                          value={aiSettings.model}
+                          onValueChange={(val) => setAiSettings({...aiSettings, model: val})}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select AI model" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="openai_gpt4">OpenAI GPT-4 Turbo</SelectItem>
+                            <SelectItem value="openai_gpt35">OpenAI GPT-3.5 Turbo</SelectItem>
+                            <SelectItem value="anthropic_claude3">Anthropic Claude 3</SelectItem>
+                            <SelectItem value="google_gemini">Google Gemini Pro</SelectItem>
+                            <SelectItem value="meta_llama3">Meta Llama 3</SelectItem>
+                            <SelectItem value="mistral_large">Mistral Large</SelectItem>
+                            <SelectItem value="deepseek_coder">DeepSeek Coder</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label>Voice for Text-to-Speech</Label>
+                        <Select
+                          value={aiSettings.voice}
+                          onValueChange={(val) => setAiSettings({...aiSettings, voice: val})}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select voice" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="alloy">Alloy (Neutral)</SelectItem>
+                            <SelectItem value="shimmer">Shimmer (Female)</SelectItem>
+                            <SelectItem value="nova">Nova (Female)</SelectItem>
+                            <SelectItem value="echo">Echo (Male)</SelectItem>
+                            <SelectItem value="fable">Fable (Male)</SelectItem>
+                            <SelectItem value="onyx">Onyx (Male)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="trained-model">Use your trained model</Label>
+                        <Switch 
+                          id="trained-model" 
+                          checked={aiSettings.useTrainedModel}
+                          onCheckedChange={(checked) => setAiSettings({...aiSettings, useTrainedModel: checked})}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="web-search">Use web search for context</Label>
+                        <Switch 
+                          id="web-search" 
+                          checked={aiSettings.useWebSearch}
+                          onCheckedChange={(checked) => setAiSettings({...aiSettings, useWebSearch: checked})}
+                        />
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+                
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => setIsOpen(false)}
+                  className="h-6 w-6 text-white hover:bg-indigo-700 rounded-full p-0"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
             </CardHeader>
             
             <Tabs value={activeView} onValueChange={setActiveView}>
@@ -426,7 +516,7 @@ export default function FloatingChat() {
                       
                       <div className="mt-3 flex items-center text-xs bg-blue-50 p-2 rounded-md text-blue-700">
                         <Check className="h-3 w-3 mr-1 text-blue-600" />
-                        Generated with OpenAI
+                        Generated with {aiSettings.model.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                       </div>
                     </div>
                     
@@ -526,7 +616,7 @@ export default function FloatingChat() {
                       </div>
                       
                       <div className="text-xs text-gray-500">
-                        OpenAI TTS
+                        Voice: {aiSettings.voice}
                       </div>
                       
                       <Button 
