@@ -1,4 +1,5 @@
 
+
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -22,7 +23,8 @@ import {
   DollarSign,
   Github,
   FileText,
-  Lock
+  Lock,
+  CloudIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -49,6 +51,7 @@ export default function Layout({ children, currentPageName }) {
     { icon: FileWarning, label: "Data Validation", page: "DataValidation" },
     { icon: Database, label: "DB Schema", page: "SchemaDiscovery" },
     { icon: Database, label: "Data Import", page: "DataImport" },
+    { icon: CloudIcon, label: "Azure Integration", page: "AzureIntegrationGuide" },
     { icon: Lock, label: "Env Variables Guide", page: "EnvironmentVariablesGuide" },
     { icon: Settings, label: "Integrations", page: "Integrations" },
     { icon: Github, label: "GitHub Sync", page: "GitHubSync" },
@@ -175,3 +178,4 @@ export default function Layout({ children, currentPageName }) {
     </div>
   );
 }
+

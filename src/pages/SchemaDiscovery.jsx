@@ -1,356 +1,574 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, Database, Table as TableIcon, List, Columns, Filter, Download, Eye, EyeOff } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { Search, Database, Table2, ChevronRight, DownloadCloud, Copy, Check, Key, ExternalLink, ChevronDown } from 'lucide-react';
+import { MetricsData } from "@/api/entities";
 
 export default function SchemaDiscovery() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [view, setView] = useState('tables');
-  const [selectedTable, setSelectedTable] = useState(null);
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [isLoading, setIsLoading] = useState(false);
-  const [schemaData, setSchemaData] = useState(null);
-  const [tableStructures, setTableStructures] = useState({});
-  const [expandedRows, setExpandedRows] = useState({});
-  const [showSensitiveColumns, setShowSensitiveColumns] = useState(false);
-  const [errorTable, setErrorTable] = useState(null);
-
-  useEffect(() => {
-    setIsLoading(true);
-    setTimeout(() => {
-      const mockData = {
-        tables: [
-          { name: 'users_view', schema: 'public', type: 'view', columns: 17, category: 'user', hasSensitiveData: true },
-          { name: 'user_limits_view', schema: 'public', type: 'view', columns: 8, category: 'user', hasSensitiveData: true },
-          { name: 'traffic_reports', schema: 'public', type: 'table', columns: 13, category: 'analytics', hasSensitiveData: false },
-          { name: 'tournament_players_view', schema: 'public', type: 'view', columns: 11, category: 'gaming', hasSensitiveData: false },
-          { name: 'tmp_tb', schema: 'public', type: 'table', columns: 11, category: 'system', hasSensitiveData: false },
-          { name: 'profiles_view', schema: 'public', type: 'view', columns: 25, category: 'user', hasSensitiveData: true },
-          { name: 'phones_view', schema: 'public', type: 'view', columns: 6, category: 'user', hasSensitiveData: true },
-          { name: 'payments_view', schema: 'public', type: 'view', columns: 43, category: 'financial', hasSensitiveData: true },
-          { name: 'payment_systems_view', schema: 'public', type: 'view', columns: 14, category: 'financial', hasSensitiveData: false },
-          { name: 'income_reports', schema: 'public', type: 'table', columns: 6, category: 'financial', hasSensitiveData: false },
-          { name: 'freespin_issues_view', schema: 'public', type: 'view', columns: 19, category: 'gaming', hasSensitiveData: false },
-          { name: 'exchange_rates_view', schema: 'public', type: 'view', columns: 8, category: 'financial', hasSensitiveData: false },
-          { name: 'documents_view', schema: 'public', type: 'view', columns: 7, category: 'user', hasSensitiveData: true },
-          { name: 'casino_modifications_view', schema: 'public', type: 'view', columns: 7, category: 'gaming', hasSensitiveData: false },
-          { name: 'casino_games_view', schema: 'public', type: 'view', columns: 12, category: 'gaming', hasSensitiveData: false },
-          { name: 'bonus_issues_view', schema: 'public', type: 'view', columns: 25, category: 'gaming', hasSensitiveData: false },
-          { name: 'balance_corrections_view', schema: 'public', type: 'view', columns: 6, category: 'financial', hasSensitiveData: false },
-          { name: 'api_reports', schema: 'public', type: 'table', columns: 29, category: 'analytics', hasSensitiveData: false },
-          { name: 'ad_args_view', schema: 'public', type: 'view', columns: 5, category: 'marketing', hasSensitiveData: false },
-          { name: 'accounts_view', schema: 'public', type: 'view', columns: 6, category: 'financial', hasSensitiveData: false },
-          { name: 'a8r_games_view', schema: 'public', type: 'view', columns: 17, category: 'gaming', hasSensitiveData: false },
-        ]
-      };
-      setSchemaData(mockData);
-
-      // Mock table structures for all tables
-      const mockTableStructures = {
-        'users_view': [
-          { name: 'id', type: 'bigint', nullable: false, isPrimary: true, isSensitive: false },
-          { name: 'tags', type: 'character varying', nullable: true, isPrimary: false, isSensitive: false },
-          { name: 'updated_at', type: 'timestamp without time zone', nullable: true, isPrimary: false, isSensitive: false },
-          { name: 'last_sign_in_at', type: 'timestamp without time zone', nullable: true, isPrimary: false, isSensitive: false },
-          { name: 'email', type: 'character varying', nullable: false, isPrimary: false, isSensitive: true },
-          { name: 'locked_at', type: 'timestamp without time zone', nullable: true, isPrimary: false, isSensitive: false },
-          { name: 'created_at', type: 'timestamp without time zone', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'with_duplicates', type: 'boolean', nullable: true, isPrimary: false, isSensitive: false },
-          { name: 'suspended', type: 'boolean', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'disabled', type: 'boolean', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'confirmed_at', type: 'timestamp without time zone', nullable: true, isPrimary: false, isSensitive: false },
-          { name: 'psp_trusted_level', type: 'text', nullable: true, isPrimary: false, isSensitive: false },
-          { name: 'ctag', type: 'text', nullable: true, isPrimary: false, isSensitive: false },
-        ],
-        'payments_view': [
-          { name: 'id', type: 'bigint', nullable: false, isPrimary: true, isSensitive: false },
-          { name: 'user_id', type: 'bigint', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'amount_cents', type: 'bigint', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'currency', type: 'character varying', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'payment_system_id', type: 'bigint', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'action', type: 'character varying', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'created_at', type: 'timestamp without time zone', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'updated_at', type: 'timestamp without time zone', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'finished_at', type: 'timestamp without time zone', nullable: true, isPrimary: false, isSensitive: false },
-          { name: 'success', type: 'boolean', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'processing', type: 'boolean', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'manual', type: 'boolean', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'account', type: 'character varying', nullable: true, isPrimary: false, isSensitive: true },
-          { name: 'masked_account', type: 'character varying', nullable: true, isPrimary: false, isSensitive: true },
-          { name: 'tx', type: 'character varying', nullable: true, isPrimary: false, isSensitive: true },
-        ],
-        'traffic_reports': [
-          { name: 'id', type: 'integer', nullable: false, isPrimary: true, isSensitive: false },
-          { name: 'date', type: 'timestamp without time zone', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'country', type: 'character varying', nullable: true, isPrimary: false, isSensitive: false },
-          { name: 'visits', type: 'integer', nullable: true, isPrimary: false, isSensitive: false },
-          { name: 'clicks', type: 'integer', nullable: true, isPrimary: false, isSensitive: false },
-          { name: 'registrations_count', type: 'integer', nullable: true, isPrimary: false, isSensitive: false },
-          { name: 'deposits_count', type: 'integer', nullable: true, isPrimary: false, isSensitive: false },
-          { name: 'ftd_count', type: 'integer', nullable: true, isPrimary: false, isSensitive: false },
-          { name: 'foreign_partner_id', type: 'integer', nullable: true, isPrimary: false, isSensitive: false },
-          { name: 'cr', type: 'double precision', nullable: true, isPrimary: false, isSensitive: false },
-          { name: 'cd', type: 'double precision', nullable: true, isPrimary: false, isSensitive: false },
-          { name: 'cftd', type: 'double precision', nullable: true, isPrimary: false, isSensitive: false },
-          { name: 'rftd', type: 'double precision', nullable: true, isPrimary: false, isSensitive: false },
-        ],
-        'profiles_view': [
-          { name: 'id', type: 'bigint', nullable: false, isPrimary: true, isSensitive: false },
-          { name: 'user_id', type: 'bigint', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'first_name', type: 'character varying', nullable: true, isPrimary: false, isSensitive: true },
-          { name: 'last_name', type: 'character varying', nullable: true, isPrimary: false, isSensitive: true },
-          { name: 'full_name', type: 'character varying', nullable: true, isPrimary: false, isSensitive: true },
-          { name: 'nickname', type: 'character varying', nullable: true, isPrimary: false, isSensitive: true },
-          { name: 'date_of_birth', type: 'date', nullable: true, isPrimary: false, isSensitive: true },
-          { name: 'gender', type: 'character varying', nullable: true, isPrimary: false, isSensitive: true },
-          { name: 'country', type: 'character varying', nullable: true, isPrimary: false, isSensitive: false },
-          { name: 'city', type: 'character varying', nullable: true, isPrimary: false, isSensitive: true },
-          { name: 'address', type: 'character varying', nullable: true, isPrimary: false, isSensitive: true },
-          { name: 'address2', type: 'character varying', nullable: true, isPrimary: false, isSensitive: true },
-          { name: 'postal_code', type: 'character varying', nullable: true, isPrimary: false, isSensitive: true },
-          { name: 'personal_id_number', type: 'character varying', nullable: true, isPrimary: false, isSensitive: true },
-          { name: 'language', type: 'character varying', nullable: true, isPrimary: false, isSensitive: false },
-          { name: 'time_zone', type: 'character varying', nullable: true, isPrimary: false, isSensitive: false },
-        ],
-        'casino_games_view': [
-          { name: 'id', type: 'bigint', nullable: false, isPrimary: true, isSensitive: false },
-          { name: 'account_id', type: 'bigint', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'game_id', type: 'bigint', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'bonus_issue_id', type: 'bigint', nullable: true, isPrimary: false, isSensitive: false },
-          { name: 'bets_sum', type: 'bigint', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'payoff_sum', type: 'bigint', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'balance_before', type: 'bigint', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'balance_after', type: 'bigint', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'jackpot_win_cents', type: 'bigint', nullable: true, isPrimary: false, isSensitive: false },
-          { name: 'exchange_rate_id', type: 'bigint', nullable: true, isPrimary: false, isSensitive: false },
-          { name: 'created_at', type: 'timestamp without time zone', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'finished_at', type: 'timestamp without time zone', nullable: true, isPrimary: false, isSensitive: false },
-        ],
-        'phones_view': [
-          { name: 'id', type: 'bigint', nullable: false, isPrimary: true, isSensitive: false },
-          { name: 'user_id', type: 'bigint', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'phone_number', type: 'character varying', nullable: false, isPrimary: false, isSensitive: true },
-          { name: 'verified_at', type: 'timestamp without time zone', nullable: true, isPrimary: false, isSensitive: false },
-          { name: 'active', type: 'boolean', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'updated_at', type: 'timestamp without time zone', nullable: false, isPrimary: false, isSensitive: false },
-        ],
-        'bonus_issues_view': [
-          { name: 'id', type: 'bigint', nullable: false, isPrimary: true, isSensitive: false },
-          { name: 'user_id', type: 'bigint', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'bonus_id', type: 'bigint', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'created_at', type: 'timestamp without time zone', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'status', type: 'character varying', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'amount_cents', type: 'bigint', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'wager_requirement_cents', type: 'bigint', nullable: false, isPrimary: false, isSensitive: false },
-        ],
-        'user_limits_view': [
-          { name: 'id', type: 'bigint', nullable: false, isPrimary: true, isSensitive: false },
-          { name: 'user_id', type: 'bigint', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'type', type: 'character varying', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'status', type: 'character varying', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'period', type: 'integer', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'created_at', type: 'timestamp without time zone', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'updated_at', type: 'timestamp without time zone', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'disable_at', type: 'timestamp without time zone', nullable: true, isPrimary: false, isSensitive: false },
-        ],
-        'tournament_players_view': [
-          { name: 'id', type: 'bigint', nullable: false, isPrimary: true, isSensitive: false },
-          { name: 'tournament_id', type: 'bigint', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'user_id', type: 'bigint', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'points', type: 'integer', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'games_taken', type: 'integer', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'bet_mcents', type: 'bigint', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'win_mcents', type: 'bigint', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'rate', type: 'double precision', nullable: false, iPrimary: false, isSensitive: false },
-          { name: 'user_confirmed', type: 'boolean', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'created_at', type: 'timestamp without time zone', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'updated_at', type: 'timestamp without time zone', nullable: false, isPrimary: false, isSensitive: false },
-        ],
-        'payment_systems_view': [
-          { name: 'id', type: 'bigint', nullable: false, isPrimary: true, isSensitive: false },
-          { name: 'name', type: 'character varying', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'system_name', type: 'character varying', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'currency', type: 'character varying', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'deposit', type: 'boolean', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'withdrawal', type: 'boolean', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'position', type: 'integer', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'active', type: 'boolean', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'min_amount_cents', type: 'bigint', nullable: true, isPrimary: false, isSensitive: false },
-          { name: 'max_amount_cents', type: 'bigint', nullable: true, isPrimary: false, isSensitive: false },
-          { name: 'created_at', type: 'timestamp without time zone', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'updated_at', type: 'timestamp without time zone', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'image_url', type: 'character varying', nullable: true, isPrimary: false, isSensitive: false },
-          { name: 'fee_percent', type: 'decimal', nullable: true, isPrimary: false, isSensitive: false },
-        ],
-        'income_reports': [
-          { name: 'id', type: 'integer', nullable: false, isPrimary: true, isSensitive: false },
-          { name: 'date', type: 'date', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'ggr', type: 'decimal', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'ngr', type: 'decimal', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'tax', type: 'decimal', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'marketing_cost', type: 'decimal', nullable: false, isPrimary: false, isSensitive: false },
-        ],
-        'freespin_issues_view': [
-          { name: 'id', type: 'bigint', nullable: false, isPrimary: true, isSensitive: false },
-          { name: 'user_id', type: 'bigint', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'status', type: 'character varying', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'created_at', type: 'timestamp without time zone', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'free_spins_count', type: 'integer', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'game_id', type: 'bigint', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'accumulated_amount', type: 'bigint', nullable: false, isPrimary: false, isSensitive: false },
-        ],
-        'exchange_rates_view': [
-          { name: 'id', type: 'bigint', nullable: false, isPrimary: true, isSensitive: false },
-          { name: 'from_currency', type: 'character varying', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'to_currency', type: 'character varying', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'rate', type: 'decimal', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'created_at', type: 'timestamp without time zone', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'updated_at', type: 'timestamp without time zone', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'active', type: 'boolean', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'source', type: 'character varying', nullable: true, isPrimary: false, isSensitive: false },
-        ],
-        'documents_view': [
-          { name: 'id', type: 'bigint', nullable: false, isPrimary: true, isSensitive: false },
-          { name: 'user_id', type: 'bigint', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'document_type', type: 'character varying', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'status', type: 'character varying', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'file_url', type: 'character varying', nullable: false, isPrimary: false, isSensitive: true },
-          { name: 'created_at', type: 'timestamp without time zone', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'updated_at', type: 'timestamp without time zone', nullable: false, isPrimary: false, isSensitive: false },
-        ],
-        'casino_modifications_view': [
-          { name: 'id', type: 'bigint', nullable: false, isPrimary: true, isSensitive: false },
-          { name: 'user_id', type: 'bigint', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'amount_cents', type: 'bigint', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'status', type: 'character varying', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'reason', type: 'text', nullable: true, isPrimary: false, isSensitive: false },
-          { name: 'created_at', type: 'timestamp without time zone', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'updated_at', type: 'timestamp without time zone', nullable: false, isPrimary: false, isSensitive: false },
-        ],
-        'balance_corrections_view': [
-          { name: 'id', type: 'bigint', nullable: false, isPrimary: true, isSensitive: false },
-          { name: 'user_id', type: 'bigint', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'amount_cents', type: 'bigint', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'reason', type: 'text', nullable: true, isPrimary: false, isSensitive: false },
-          { name: 'created_at', type: 'timestamp without time zone', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'created_by', type: 'character varying', nullable: false, isPrimary: false, isSensitive: false },
-        ],
-        'api_reports': [
-          { name: 'id', type: 'integer', nullable: false, isPrimary: true, isSensitive: false },
-          { name: 'timestamp', type: 'timestamp without time zone', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'endpoint', type: 'character varying', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'method', type: 'character varying', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'status_code', type: 'integer', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'response_time_ms', type: 'integer', nullable: false, iPrimary: false, isSensitive: false },
-          { name: 'client_ip', type: 'character varying', nullable: true, isPrimary: false, isSensitive: true },
-          { name: 'user_agent', type: 'character varying', nullable: true, isPrimary: false, isSensitive: true },
-          { name: 'error_message', type: 'text', nullable: true, isPrimary: false, isSensitive: false },
-        ],
-        'ad_args_view': [
-          { name: 'id', type: 'bigint', nullable: false, isPrimary: true, isSensitive: false },
-          { name: 'name', type: 'character varying', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'value', type: 'character varying', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'created_at', type: 'timestamp without time zone', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'updated_at', type: 'timestamp without time zone', nullable: false, isPrimary: false, isSensitive: false },
-        ],
-        'accounts_view': [
-          { name: 'id', type: 'bigint', nullable: false, isPrimary: true, isSensitive: false },
-          { name: 'user_id', type: 'bigint', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'balance_cents', type: 'bigint', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'currency', type: 'character varying', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'active', type: 'boolean', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'updated_at', type: 'timestamp without time zone', nullable: false, isPrimary: false, isSensitive: false },
-        ],
-        'a8r_games_view': [
-          { name: 'id', type: 'bigint', nullable: false, isPrimary: true, isSensitive: false },
-          { name: 'game_name', type: 'character varying', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'provider', type: 'character varying', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'game_type', type: 'character varying', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'rtp', type: 'decimal', nullable: true, isPrimary: false, isSensitive: false },
-          { name: 'volatility', type: 'character varying', nullable: true, isPrimary: false, isSensitive: false },
-          { name: 'min_bet_cents', type: 'bigint', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'max_bet_cents', type: 'bigint', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'active', type: 'boolean', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'created_at', type: 'timestamp without time zone', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'updated_at', type: 'timestamp without time zone', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'image_url', type: 'character varying', nullable: true, isPrimary: false, isSensitive: false },
-          { name: 'popularity_score', type: 'decimal', nullable: true, isPrimary: false, isSensitive: false },
-          { name: 'features', type: 'text[]', nullable: true, isPrimary: false, isSensitive: false },
-          { name: 'themes', type: 'text[]', nullable: true, isPrimary: false, isSensitive: false },
-          { name: 'supported_currencies', type: 'text[]', nullable: true, isPrimary: false, isSensitive: false },
-          { name: 'supported_languages', type: 'text[]', nullable: true, isPrimary: false, isSensitive: false },
-        ],
-        'tmp_tb': [
-          { name: 'id', type: 'bigint', nullable: false, isPrimary: true, isSensitive: false },
-          { name: 'name', type: 'character varying', nullable: false, isPrimary: false, isSensitive: false },
-          { name: 'value', type: 'text', nullable: true, isPrimary: false, isSensitive: false },
-          { name: 'created_at', type: 'timestamp without time zone', nullable: false, isPrimary: false, isSensitive: false },
-        ]
-      };
-      
-      setTableStructures(mockTableStructures);
-      setIsLoading(false);
-    }, 1500);
-  }, []);
-
-  const filteredTables = schemaData?.tables.filter(table => {
-    const matchesSearch = table.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || table.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  }) || [];
-
-  const categories = schemaData?.tables.reduce((acc, table) => {
-    if (!acc.includes(table.category)) {
-      acc.push(table.category);
-    }
-    return acc;
-  }, []) || [];
-
-  const handleTableClick = (tableName) => {
-    setSelectedTable(tableName);
-    setErrorTable(null);
-    // If the table structure doesn't exist, set an error
-    if (!tableStructures[tableName] || tableStructures[tableName].length === 0) {
-      setErrorTable(tableName);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [activeTab, setActiveTab] = useState("tables");
+  const [copied, setCopied] = useState(false);
+  const [expandedTable, setExpandedTable] = useState(null);
+  
+  // This is our database schema that represents the actual schema in the database
+  const databaseSchema = {
+    players: {
+      description: "Player accounts and demographic information",
+      tables: [
+        {
+          name: "users",
+          description: "Main user accounts table",
+          primary_key: "id",
+          columns: [
+            { name: "id", type: "integer", description: "Primary key", nullable: false },
+            { name: "email", type: "varchar(255)", description: "User email address", nullable: false },
+            { name: "full_name", type: "varchar(255)", description: "Full name", nullable: true },
+            { name: "nickname", type: "varchar(100)", description: "User nickname for display", nullable: true },
+            { name: "password_hash", type: "varchar(255)", description: "Hashed password", nullable: false },
+            { name: "country", type: "varchar(2)", description: "Country code (ISO 3166-1)", nullable: true },
+            { name: "city", type: "varchar(100)", description: "City", nullable: true },
+            { name: "address", type: "varchar(255)", description: "Street address", nullable: true },
+            { name: "postal_code", type: "varchar(20)", description: "Postal/ZIP code", nullable: true },
+            { name: "phone_number", type: "varchar(20)", description: "Phone number", nullable: true },
+            { name: "date_of_birth", type: "date", description: "Date of birth", nullable: true },
+            { name: "gender", type: "varchar(10)", description: "Gender", nullable: true },
+            { name: "language", type: "varchar(5)", description: "Preferred language", nullable: true },
+            { name: "timezone", type: "varchar(50)", description: "Timezone", nullable: true },
+            { name: "registration_date", type: "timestamp", description: "Registration date", nullable: false },
+            { name: "last_login_date", type: "timestamp", description: "Last login date", nullable: true },
+            { name: "status", type: "varchar(20)", description: "Account status (active, suspended, etc.)", nullable: false },
+            { name: "referral_code", type: "varchar(50)", description: "Personal referral code", nullable: true },
+            { name: "referrer_id", type: "integer", description: "ID of user who referred this user", nullable: true },
+            { name: "is_verified", type: "boolean", description: "Email verification status", nullable: false },
+            { name: "verification_date", type: "timestamp", description: "When email was verified", nullable: true }
+          ]
+        },
+        {
+          name: "user_documents",
+          description: "KYC document uploads",
+          primary_key: "id",
+          columns: [
+            { name: "id", type: "integer", description: "Primary key", nullable: false },
+            { name: "user_id", type: "integer", description: "Reference to users.id", nullable: false },
+            { name: "document_type", type: "varchar(50)", description: "Type of document (passport, driving license, etc.)", nullable: false },
+            { name: "file_url", type: "varchar(255)", description: "URL to stored document", nullable: false },
+            { name: "upload_date", type: "timestamp", description: "When document was uploaded", nullable: false },
+            { name: "verification_status", type: "varchar(20)", description: "Verification status", nullable: false },
+            { name: "verified_date", type: "timestamp", description: "When document was verified", nullable: true },
+            { name: "verified_by", type: "integer", description: "Admin who verified document", nullable: true },
+            { name: "rejection_reason", type: "text", description: "Reason for rejection", nullable: true }
+          ]
+        },
+        {
+          name: "user_preferences",
+          description: "User preferences and settings",
+          primary_key: "id",
+          columns: [
+            { name: "id", type: "integer", description: "Primary key", nullable: false },
+            { name: "user_id", type: "integer", description: "Reference to users.id", nullable: false },
+            { name: "marketing_email", type: "boolean", description: "Permission for marketing emails", nullable: false },
+            { name: "marketing_sms", type: "boolean", description: "Permission for marketing SMS", nullable: false },
+            { name: "marketing_push", type: "boolean", description: "Permission for push notifications", nullable: false },
+            { name: "newsletter", type: "boolean", description: "Newsletter subscription", nullable: false },
+            { name: "two_factor_auth", type: "boolean", description: "Two-factor authentication enabled", nullable: false }
+          ]
+        },
+        {
+          name: "responsible_gaming_limits",
+          description: "Self-imposed player limits",
+          primary_key: "id",
+          columns: [
+            { name: "id", type: "integer", description: "Primary key", nullable: false },
+            { name: "user_id", type: "integer", description: "Reference to users.id", nullable: false },
+            { name: "limit_type", type: "varchar(50)", description: "Type of limit (deposit, loss, wager, time)", nullable: false },
+            { name: "limit_period", type: "varchar(20)", description: "Period (daily, weekly, monthly)", nullable: false },
+            { name: "amount", type: "decimal(15,2)", description: "Limit amount", nullable: true },
+            { name: "time_minutes", type: "integer", description: "Time limit in minutes", nullable: true },
+            { name: "created_date", type: "timestamp", description: "When limit was set", nullable: false },
+            { name: "effective_date", type: "timestamp", description: "When limit becomes active", nullable: false },
+            { name: "status", type: "varchar(20)", description: "Status of the limit", nullable: false }
+          ]
+        },
+        {
+          name: "user_sessions",
+          description: "User login sessions",
+          primary_key: "id",
+          columns: [
+            { name: "id", type: "integer", description: "Primary key", nullable: false },
+            { name: "user_id", type: "integer", description: "Reference to users.id", nullable: false },
+            { name: "session_token", type: "varchar(255)", description: "Unique session token", nullable: false },
+            { name: "ip_address", type: "varchar(45)", description: "IP address", nullable: false },
+            { name: "user_agent", type: "text", description: "Browser user agent", nullable: true },
+            { name: "device_type", type: "varchar(50)", description: "Device type", nullable: true },
+            { name: "os", type: "varchar(50)", description: "Operating system", nullable: true },
+            { name: "browser", type: "varchar(50)", description: "Browser", nullable: true },
+            { name: "login_time", type: "timestamp", description: "Login time", nullable: false },
+            { name: "logout_time", type: "timestamp", description: "Logout time", nullable: true },
+            { name: "is_active", type: "boolean", description: "Whether session is still active", nullable: false }
+          ]
+        }
+      ]
+    },
+    payments: {
+      description: "Financial transactions and payment methods",
+      tables: [
+        {
+          name: "payment_methods",
+          description: "Available payment methods",
+          primary_key: "id",
+          columns: [
+            { name: "id", type: "integer", description: "Primary key", nullable: false },
+            { name: "name", type: "varchar(100)", description: "Payment method name", nullable: false },
+            { name: "payment_system", type: "varchar(50)", description: "Payment system (PayPal, Visa, etc.)", nullable: false },
+            { name: "method_type", type: "varchar(20)", description: "Type (card, e-wallet, etc.)", nullable: false },
+            { name: "min_deposit_cents", type: "integer", description: "Minimum deposit in cents", nullable: false },
+            { name: "max_deposit_cents", type: "integer", description: "Maximum deposit in cents", nullable: false },
+            { name: "min_withdrawal_cents", type: "integer", description: "Minimum withdrawal in cents", nullable: false },
+            { name: "max_withdrawal_cents", type: "integer", description: "Maximum withdrawal in cents", nullable: false },
+            { name: "deposit_fee_percent", type: "decimal(5,2)", description: "Deposit fee percentage", nullable: false },
+            { name: "withdrawal_fee_percent", type: "decimal(5,2)", description: "Withdrawal fee percentage", nullable: false },
+            { name: "deposit_processing_time", type: "varchar(50)", description: "Typical deposit processing time", nullable: true },
+            { name: "withdrawal_processing_time", type: "varchar(50)", description: "Typical withdrawal processing time", nullable: true },
+            { name: "is_active", type: "boolean", description: "Whether method is active", nullable: false },
+            { name: "countries_allowed", type: "text", description: "Comma-separated country codes where allowed", nullable: true },
+            { name: "countries_blocked", type: "text", description: "Comma-separated country codes where blocked", nullable: true },
+            { name: "image_url", type: "varchar(255)", description: "Payment method logo URL", nullable: true }
+          ]
+        },
+        {
+          name: "user_payment_methods",
+          description: "User saved payment methods",
+          primary_key: "id",
+          columns: [
+            { name: "id", type: "integer", description: "Primary key", nullable: false },
+            { name: "user_id", type: "integer", description: "Reference to users.id", nullable: false },
+            { name: "payment_method_id", type: "integer", description: "Reference to payment_methods.id", nullable: false },
+            { name: "token", type: "varchar(255)", description: "Tokenized payment information", nullable: false },
+            { name: "last_four", type: "varchar(4)", description: "Last four digits for cards", nullable: true },
+            { name: "expiry_date", type: "varchar(7)", description: "Expiry date for cards (MM/YYYY)", nullable: true },
+            { name: "account_holder", type: "varchar(255)", description: "Name of account holder", nullable: true },
+            { name: "is_default", type: "boolean", description: "Whether this is the default method", nullable: false },
+            { name: "added_date", type: "timestamp", description: "When method was added", nullable: false },
+            { name: "last_used_date", type: "timestamp", description: "When method was last used", nullable: true }
+          ]
+        },
+        {
+          name: "deposits",
+          description: "Deposit transactions",
+          primary_key: "id",
+          columns: [
+            { name: "id", type: "integer", description: "Primary key", nullable: false },
+            { name: "user_id", type: "integer", description: "Reference to users.id", nullable: false },
+            { name: "user_payment_method_id", type: "integer", description: "Reference to user_payment_methods.id", nullable: true },
+            { name: "amount_cents", type: "integer", description: "Amount in cents", nullable: false },
+            { name: "currency", type: "varchar(3)", description: "Currency code", nullable: false },
+            { name: "status", type: "varchar(20)", description: "Transaction status", nullable: false },
+            { name: "transaction_id", type: "varchar(255)", description: "External transaction ID", nullable: true },
+            { name: "created_date", type: "timestamp", description: "When deposit was initiated", nullable: false },
+            { name: "completed_date", type: "timestamp", description: "When deposit was completed", nullable: true },
+            { name: "fee_cents", type: "integer", description: "Fee amount in cents", nullable: false },
+            { name: "ip_address", type: "varchar(45)", description: "IP address", nullable: true },
+            { name: "user_agent", type: "text", description: "Browser user agent", nullable: true },
+            { name: "decline_reason", type: "varchar(50)", description: "Reason for decline if failed", nullable: true },
+            { name: "is_first_deposit", type: "boolean", description: "Whether this is the user's first deposit", nullable: false }
+          ]
+        },
+        {
+          name: "withdrawals",
+          description: "Withdrawal transactions",
+          primary_key: "id",
+          columns: [
+            { name: "id", type: "integer", description: "Primary key", nullable: false },
+            { name: "user_id", type: "integer", description: "Reference to users.id", nullable: false },
+            { name: "user_payment_method_id", type: "integer", description: "Reference to user_payment_methods.id", nullable: true },
+            { name: "amount_cents", type: "integer", description: "Amount in cents", nullable: false },
+            { name: "currency", type: "varchar(3)", description: "Currency code", nullable: false },
+            { name: "status", type: "varchar(20)", description: "Transaction status", nullable: false },
+            { name: "transaction_id", type: "varchar(255)", description: "External transaction ID", nullable: true },
+            { name: "created_date", type: "timestamp", description: "When withdrawal was requested", nullable: false },
+            { name: "approved_date", type: "timestamp", description: "When withdrawal was approved", nullable: true },
+            { name: "completed_date", type: "timestamp", description: "When withdrawal was completed", nullable: true },
+            { name: "fee_cents", type: "integer", description: "Fee amount in cents", nullable: false },
+            { name: "ip_address", type: "varchar(45)", description: "IP address", nullable: true },
+            { name: "approved_by", type: "integer", description: "Admin who approved withdrawal", nullable: true },
+            { name: "rejection_reason", type: "varchar(255)", description: "Reason for rejection if declined", nullable: true }
+          ]
+        },
+        {
+          name: "exchange_rates",
+          description: "Currency exchange rates",
+          primary_key: "id",
+          columns: [
+            { name: "id", type: "integer", description: "Primary key", nullable: false },
+            { name: "from_currency", type: "varchar(3)", description: "Source currency code", nullable: false },
+            { name: "to_currency", type: "varchar(3)", description: "Target currency code", nullable: false },
+            { name: "rate", type: "decimal(20,10)", description: "Exchange rate", nullable: false },
+            { name: "date", type: "date", description: "Date of rate", nullable: false },
+            { name: "source", type: "varchar(50)", description: "Source of rate data", nullable: false }
+          ]
+        }
+      ]
+    },
+    gaming: {
+      description: "Game transactions and behaviors",
+      tables: [
+        {
+          name: "games",
+          description: "Game catalog",
+          primary_key: "id",
+          columns: [
+            { name: "id", type: "integer", description: "Primary key", nullable: false },
+            { name: "name", type: "varchar(255)", description: "Game name", nullable: false },
+            { name: "provider", type: "varchar(100)", description: "Game provider", nullable: false },
+            { name: "type", type: "varchar(50)", description: "Game type", nullable: false },
+            { name: "category", type: "varchar(50)", description: "Game category", nullable: false },
+            { name: "thumbnail_url", type: "varchar(255)", description: "Thumbnail image URL", nullable: true },
+            { name: "rtp", type: "decimal(5,2)", description: "Return to player percentage", nullable: true },
+            { name: "volatility", type: "varchar(20)", description: "Volatility level", nullable: true },
+            { name: "min_bet_cents", type: "integer", description: "Minimum bet in cents", nullable: false },
+            { name: "max_bet_cents", type: "integer", description: "Maximum bet in cents", nullable: false },
+            { name: "has_jackpot", type: "boolean", description: "Whether game has jackpot", nullable: false },
+            { name: "has_free_spins", type: "boolean", description: "Whether game has free spins feature", nullable: false },
+            { name: "release_date", type: "date", description: "Game release date", nullable: true },
+            { name: "is_active", type: "boolean", description: "Whether game is active", nullable: false },
+            { name: "popularity", type: "integer", description: "Popularity ranking", nullable: true },
+            { name: "features", type: "text", description: "Comma-separated game features", nullable: true },
+            { name: "themes", type: "text", description: "Comma-separated game themes", nullable: true }
+          ]
+        },
+        {
+          name: "game_rounds",
+          description: "Individual game rounds played",
+          primary_key: "id",
+          columns: [
+            { name: "id", type: "integer", description: "Primary key", nullable: false },
+            { name: "user_id", type: "integer", description: "Reference to users.id", nullable: false },
+            { name: "game_id", type: "integer", description: "Reference to games.id", nullable: false },
+            { name: "session_id", type: "varchar(255)", description: "Game session identifier", nullable: false },
+            { name: "round_id", type: "varchar(255)", description: "Round identifier from provider", nullable: false },
+            { name: "bet_cents", type: "integer", description: "Bet amount in cents", nullable: false },
+            { name: "win_cents", type: "integer", description: "Win amount in cents", nullable: false },
+            { name: "net_cents", type: "integer", description: "Net result in cents (win-bet)", nullable: false },
+            { name: "currency", type: "varchar(3)", description: "Currency code", nullable: false },
+            { name: "start_time", type: "timestamp", description: "When round started", nullable: false },
+            { name: "end_time", type: "timestamp", description: "When round ended", nullable: true },
+            { name: "is_free_spin", type: "boolean", description: "Whether this was a free spin", nullable: false },
+            { name: "is_bonus_round", type: "boolean", description: "Whether this was a bonus round", nullable: false },
+            { name: "is_jackpot_win", type: "boolean", description: "Whether this was a jackpot win", nullable: false },
+            { name: "jackpot_win_cents", type: "integer", description: "Jackpot win amount in cents", nullable: true },
+            { name: "balance_before_cents", type: "integer", description: "Balance before round in cents", nullable: false },
+            { name: "balance_after_cents", type: "integer", description: "Balance after round in cents", nullable: false },
+            { name: "game_data", type: "json", description: "Additional game-specific data", nullable: true },
+            { name: "ip_address", type: "varchar(45)", description: "IP address", nullable: true },
+            { name: "device_type", type: "varchar(50)", description: "Device type", nullable: true }
+          ]
+        },
+        {
+          name: "game_sessions",
+          description: "Game playing sessions",
+          primary_key: "id",
+          columns: [
+            { name: "id", type: "integer", description: "Primary key", nullable: false },
+            { name: "user_id", type: "integer", description: "Reference to users.id", nullable: false },
+            { name: "start_time", type: "timestamp", description: "When session started", nullable: false },
+            { name: "end_time", type: "timestamp", description: "When session ended", nullable: true },
+            { name: "ip_address", type: "varchar(45)", description: "IP address", nullable: true },
+            { name: "device_type", type: "varchar(50)", description: "Device type", nullable: true },
+            { name: "os", type: "varchar(50)", description: "Operating system", nullable: true },
+            { name: "browser", type: "varchar(50)", description: "Browser", nullable: true },
+            { name: "total_wager_cents", type: "integer", description: "Total amount wagered in cents", nullable: false },
+            { name: "total_win_cents", type: "integer", description: "Total amount won in cents", nullable: false },
+            { name: "net_result_cents", type: "integer", description: "Net result in cents (win-wager)", nullable: false },
+            { name: "currency", type: "varchar(3)", description: "Currency code", nullable: false },
+            { name: "rounds_played", type: "integer", description: "Number of rounds played", nullable: false },
+            { name: "games_played", type: "integer", description: "Number of different games played", nullable: false }
+          ]
+        },
+        {
+          name: "jackpots",
+          description: "Jackpot configurations and current values",
+          primary_key: "id",
+          columns: [
+            { name: "id", type: "integer", description: "Primary key", nullable: false },
+            { name: "name", type: "varchar(100)", description: "Jackpot name", nullable: false },
+            { name: "type", type: "varchar(50)", description: "Jackpot type (progressive, fixed, etc.)", nullable: false },
+            { name: "current_value_cents", type: "bigint", description: "Current jackpot value in cents", nullable: false },
+            { name: "seed_value_cents", type: "bigint", description: "Initial jackpot value in cents", nullable: false },
+            { name: "increment_rate", type: "decimal(5,2)", description: "Rate at which jackpot increases", nullable: false },
+            { name: "last_won_date", type: "timestamp", description: "When jackpot was last won", nullable: true },
+            { name: "last_won_by", type: "integer", description: "User ID of last winner", nullable: true },
+            { name: "last_won_amount_cents", type: "bigint", description: "Last won amount in cents", nullable: true },
+            { name: "linked_games", type: "text", description: "Comma-separated list of game IDs", nullable: true },
+            { name: "currency", type: "varchar(3)", description: "Currency code", nullable: false },
+            { name: "is_active", type: "boolean", description: "Whether jackpot is active", nullable: false }
+          ]
+        }
+      ]
+    },
+    bonuses: {
+      description: "Bonuses, promotions, and player rewards",
+      tables: [
+        {
+          name: "bonus_templates",
+          description: "Bonus and promotion templates",
+          primary_key: "id",
+          columns: [
+            { name: "id", type: "integer", description: "Primary key", nullable: false },
+            { name: "name", type: "varchar(255)", description: "Bonus name", nullable: false },
+            { name: "type", type: "varchar(50)", description: "Bonus type", nullable: false },
+            { name: "description", type: "text", description: "Description", nullable: true },
+            { name: "amount_type", type: "varchar(20)", description: "Percentage or fixed amount", nullable: false },
+            { name: "amount", type: "decimal(15,2)", description: "Bonus amount or percentage", nullable: false },
+            { name: "max_amount", type: "decimal(15,2)", description: "Maximum bonus amount", nullable: true },
+            { name: "wagering_requirement", type: "decimal(5,2)", description: "Wagering requirement multiplier", nullable: false },
+            { name: "expiry_days", type: "integer", description: "Days until bonus expires", nullable: false },
+            { name: "min_deposit", type: "decimal(15,2)", description: "Minimum deposit to qualify", nullable: true },
+            { name: "bonus_code", type: "varchar(50)", description: "Bonus code", nullable: true },
+            { name: "is_first_deposit_only", type: "boolean", description: "First deposit only", nullable: false },
+            { name: "is_recurring", type: "boolean", description: "Whether bonus can be claimed multiple times", nullable: false },
+            { name: "start_date", type: "timestamp", description: "When promotion starts", nullable: true },
+            { name: "end_date", type: "timestamp", description: "When promotion ends", nullable: true },
+            { name: "countries_allowed", type: "text", description: "Comma-separated country codes", nullable: true },
+            { name: "payment_methods_allowed", type: "text", description: "Comma-separated payment method IDs", nullable: true },
+            { name: "is_active", type: "boolean", description: "Whether bonus is active", nullable: false },
+            { name: "created_by", type: "integer", description: "Admin who created bonus", nullable: false },
+            { name: "created_date", type: "timestamp", description: "Creation date", nullable: false }
+          ]
+        },
+        {
+          name: "bonus_issues",
+          description: "Instances of bonuses issued to players",
+          primary_key: "id",
+          columns: [
+            { name: "id", type: "integer", description: "Primary key", nullable: false },
+            { name: "user_id", type: "integer", description: "Reference to users.id", nullable: false },
+            { name: "bonus_template_id", type: "integer", description: "Reference to bonus_templates.id", nullable: false },
+            { name: "amount_cents", type: "integer", description: "Bonus amount in cents", nullable: false },
+            { name: "currency", type: "varchar(3)", description: "Currency code", nullable: false },
+            { name: "wager_requirement_cents", type: "integer", description: "Required wagering in cents", nullable: false },
+            { name: "wager_completed_cents", type: "integer", description: "Completed wagering in cents", nullable: false },
+            { name: "status", type: "varchar(20)", description: "Bonus status", nullable: false },
+            { name: "activation_date", type: "timestamp", description: "When bonus was activated", nullable: false },
+            { name: "expiry_date", type: "timestamp", description: "When bonus expires", nullable: false },
+            { name: "completed_date", type: "timestamp", description: "When wagering was completed", nullable: true },
+            { name: "canceled_date", type: "timestamp", description: "When bonus was canceled", nullable: true },
+            { name: "forfeited_date", type: "timestamp", description: "When bonus was forfeited", nullable: true },
+            { name: "related_deposit_id", type: "integer", description: "Reference to deposits.id", nullable: true },
+            { name: "issued_by", type: "integer", description: "Admin who issued bonus", nullable: true },
+            { name: "is_automatically_issued", type: "boolean", description: "Whether issued automatically", nullable: false },
+            { name: "balance_cents", type: "integer", description: "Current bonus balance in cents", nullable: false },
+            { name: "locked_amount_cents", type: "integer", description: "Locked real money in cents", nullable: false },
+            { name: "won_amount_cents", type: "integer", description: "Amount won from bonus in cents", nullable: false }
+          ]
+        },
+        {
+          name: "free_spins",
+          description: "Free spins issued to players",
+          primary_key: "id",
+          columns: [
+            { name: "id", type: "integer", description: "Primary key", nullable: false },
+            { name: "user_id", type: "integer", description: "Reference to users.id", nullable: false },
+            { name: "bonus_issue_id", type: "integer", description: "Reference to bonus_issues.id", nullable: true },
+            { name: "game_id", type: "integer", description: "Reference to games.id", nullable: true },
+            { name: "spins_count", type: "integer", description: "Number of free spins", nullable: false },
+            { name: "spins_used", type: "integer", description: "Number of spins used", nullable: false },
+            { name: "spin_value_cents", type: "integer", description: "Value per spin in cents", nullable: false },
+            { name: "status", type: "varchar(20)", description: "Status of free spins", nullable: false },
+            { name: "activation_date", type: "timestamp", description: "When free spins were activated", nullable: false },
+            { name: "expiry_date", type: "timestamp", description: "When free spins expire", nullable: false },
+            { name: "wager_requirement", type: "decimal(5,2)", description: "Wagering requirement multiplier", nullable: false },
+            { name: "accumulated_winnings_cents", type: "integer", description: "Accumulated winnings in cents", nullable: false },
+            { name: "currency", type: "varchar(3)", description: "Currency code", nullable: false },
+            { name: "created_date", type: "timestamp", description: "Creation date", nullable: false }
+          ]
+        },
+        {
+          name: "loyalty_points",
+          description: "Player loyalty points transactions",
+          primary_key: "id",
+          columns: [
+            { name: "id", type: "integer", description: "Primary key", nullable: false },
+            { name: "user_id", type: "integer", description: "Reference to users.id", nullable: false },
+            { name: "transaction_type", type: "varchar(50)", description: "Type of transaction", nullable: false },
+            { name: "points", type: "integer", description: "Number of points", nullable: false },
+            { name: "balance_before", type: "integer", description: "Points balance before", nullable: false },
+            { name: "balance_after", type: "integer", description: "Points balance after", nullable: false },
+            { name: "reference_id", type: "integer", description: "Related transaction ID", nullable: true },
+            { name: "created_date", type: "timestamp", description: "Transaction date", nullable: false },
+            { name: "description", type: "varchar(255)", description: "Transaction description", nullable: true }
+          ]
+        }
+      ]
+    },
+    marketing: {
+      description: "Marketing campaigns and affiliate tracking",
+      tables: [
+        {
+          name: "campaigns",
+          description: "Marketing campaigns",
+          primary_key: "id",
+          columns: [
+            { name: "id", type: "integer", description: "Primary key", nullable: false },
+            { name: "name", type: "varchar(255)", description: "Campaign name", nullable: false },
+            { name: "type", type: "varchar(50)", description: "Campaign type", nullable: false },
+            { name: "description", type: "text",  description: "Campaign description", nullable: true },
+            { name: "budget_cents", type: "integer", description: "Campaign budget in cents", nullable: true },
+            { name: "spent_cents", type: "integer", description: "Amount spent in cents", nullable: false },
+            { name: "start_date", type: "timestamp", description: "Campaign start date", nullable: false },
+            { name: "end_date", type: "timestamp", description: "Campaign end date", nullable: true },
+            { name: "status", type: "varchar(20)", description: "Campaign status", nullable: false },
+            { name: "target_geo", type: "text", description: "Target countries", nullable: true },
+            { name: "target_platform", type: "varchar(50)", description: "Target platform", nullable: true },
+            { name: "tracking_code", type: "varchar(100)", description: "Campaign tracking code", nullable: false },
+            { name: "created_by", type: "integer", description: "Admin who created campaign", nullable: false },
+            { name: "created_date", type: "timestamp", description: "Creation date", nullable: false }
+          ]
+        },
+        {
+          name: "affiliates",
+          description: "Affiliate partners",
+          primary_key: "id",
+          columns: [
+            { name: "id", type: "integer", description: "Primary key", nullable: false },
+            { name: "name", type: "varchar(255)", description: "Affiliate name", nullable: false },
+            { name: "email", type: "varchar(255)", description: "Contact email", nullable: false },
+            { name: "tracking_code", type: "varchar(100)", description: "Affiliate tracking code", nullable: false },
+            { name: "commission_type", type: "varchar(50)", description: "Commission type", nullable: false },
+            { name: "commission_rate", type: "decimal(5,2)", description: "Commission rate", nullable: false },
+            { name: "min_payout_cents", type: "integer", description: "Minimum payout in cents", nullable: false },
+            { name: "balance_cents", type: "integer", description: "Current balance in cents", nullable: false },
+            { name: "currency", type: "varchar(3)", description: "Currency code", nullable: false },
+            { name: "status", type: "varchar(20)", description: "Affiliate status", nullable: false },
+            { name: "website", type: "varchar(255)", description: "Affiliate website", nullable: true },
+            { name: "onboarding_date", type: "timestamp", description: "When affiliate was onboarded", nullable: false }
+          ]
+        },
+        {
+          name: "affiliate_clicks",
+          description: "Affiliate referral tracking",
+          primary_key: "id",
+          columns: [
+            { name: "id", type: "integer", description: "Primary key", nullable: false },
+            { name: "affiliate_id", type: "integer", description: "Reference to affiliates.id", nullable: false },
+            { name: "tracking_code", type: "varchar(100)", description: "Tracking code used", nullable: false },
+            { name: "ip_address", type: "varchar(45)", description: "Visitor IP address", nullable: false },
+            { name: "user_agent", type: "text", description: "Browser user agent", nullable: true },
+            { name: "referrer_url", type: "varchar(255)", description: "Referrer URL", nullable: true },
+            { name: "landing_page", type: "varchar(255)", description: "Landing page URL", nullable: false },
+            { name: "created_date", type: "timestamp", description: "Click timestamp", nullable: false },
+            { name: "converted_user_id", type: "integer", description: "User ID if converted", nullable: true },
+            { name: "conversion_date", type: "timestamp", description: "When click converted", nullable: true }
+          ]
+        },
+        {
+          name: "affiliate_commissions",
+          description: "Affiliate commission entries",
+          primary_key: "id",
+          columns: [
+            { name: "id", type: "integer", description: "Primary key", nullable: false },
+            { name: "affiliate_id", type: "integer", description: "Reference to affiliates.id", nullable: false },
+            { name: "user_id", type: "integer", description: "Reference to users.id", nullable: false },
+            { name: "type", type: "varchar(50)", description: "Commission type", nullable: false },
+            { name: "amount_cents", type: "integer", description: "Commission amount in cents", nullable: false },
+            { name: "status", type: "varchar(20)", description: "Commission status", nullable: false },
+            { name: "currency", type: "varchar(3)", description: "Currency code", nullable: false },
+            { name: "reference_id", type: "integer", description: "Related transaction ID", nullable: true },
+            { name: "created_date", type: "timestamp", description: "Creation date", nullable: false },
+            { name: "paid_date", type: "timestamp", description: "When commission was paid", nullable: true }
+          ]
+        },
+        {
+          name: "marketing_notifications",
+          description: "Marketing notification templates and logs",
+          primary_key: "id",
+          columns: [
+            { name: "id", type: "integer", description: "Primary key", nullable: false },
+            { name: "type", type: "varchar(50)", description: "Notification type", nullable: false },
+            { name: "name", type: "varchar(255)", description: "Template name", nullable: false },
+            { name: "subject", type: "varchar(255)", description: "Notification subject", nullable: false },
+            { name: "content", type: "text", description: "Notification content", nullable: false },
+            { name: "variables", type: "json", description: "Template variables", nullable: true },
+            { name: "campaign_id", type: "integer", description: "Reference to campaigns.id", nullable: true },
+            { name: "schedule_type", type: "varchar(50)", description: "How notification is scheduled", nullable: false },
+            { name: "trigger_event", type: "varchar(50)", description: "Event that triggers notification", nullable: true },
+            { name: "is_active", type: "boolean", description: "Whether template is active", nullable: false },
+            { name: "created_by", type: "integer", description: "Admin who created template", nullable: false },
+            { name: "created_date", type: "timestamp", description: "Creation date", nullable: false }
+          ]
+        }
+      ]
     }
   };
 
-  const exportTableSchema = (tableName) => {
-    const columns = tableStructures[tableName];
-    if (!columns) return;
+  // Process the schema for flat table and column list
+  const [flatColumns, flatTables] = React.useMemo(() => {
+    let allColumns = [];
+    let allTables = [];
     
-    let csv = 'column_name,data_type,nullable,is_primary_key\n';
-    columns.forEach(col => {
-      if (!col.isSensitive || showSensitiveColumns) {
-        csv += `${col.name},${col.type},${col.nullable},${col.isPrimary}\n`;
-      }
+    Object.entries(databaseSchema).forEach(([domain, domainData]) => {
+      domainData.tables.forEach(table => {
+        allTables.push({
+          name: table.name,
+          domain: domain,
+          description: table.description
+        });
+        
+        table.columns.forEach(column => {
+          allColumns.push({
+            domain: domain,
+            table: table.name,
+            name: column.name,
+            type: column.type,
+            description: column.description,
+            nullable: column.nullable
+          });
+        });
+      });
     });
     
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `${tableName}_schema.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+    return [allColumns, allTables];
+  }, [databaseSchema]);
+  
+  const filteredColumns = React.useMemo(() => {
+    if (!searchTerm) return flatColumns;
+    const term = searchTerm.toLowerCase();
+    return flatColumns.filter(col => 
+      col.name.toLowerCase().includes(term) ||
+      col.table.toLowerCase().includes(term) ||
+      col.domain.toLowerCase().includes(term) ||
+      col.description.toLowerCase().includes(term)
+    );
+  }, [flatColumns, searchTerm]);
+  
+  const filteredTables = React.useMemo(() => {
+    if (!searchTerm) return flatTables;
+    const term = searchTerm.toLowerCase();
+    return flatTables.filter(table => 
+      table.name.toLowerCase().includes(term) ||
+      table.domain.toLowerCase().includes(term) ||
+      table.description.toLowerCase().includes(term)
+    );
+  }, [flatTables, searchTerm]);
 
-  const toggleExpandRow = (tableName) => {
-    setExpandedRows(prev => ({
-      ...prev,
-      [tableName]: !prev[tableName]
-    }));
+  const copySchema = () => {
+    navigator.clipboard.writeText(JSON.stringify(databaseSchema, null, 2));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  
+  const handleTableClick = (tableName) => {
+    if (expandedTable === tableName) {
+      setExpandedTable(null);
+    } else {
+      setExpandedTable(tableName);
+    }
   };
 
   return (
@@ -358,244 +576,205 @@ export default function SchemaDiscovery() {
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Database Schema Discovery</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Database Schema</h1>
             <p className="text-gray-500">
-              Explore database tables, views and their structures
+              Browse and search database structure and relationships
             </p>
           </div>
           
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              className="flex items-center gap-2"
-              onClick={() => setShowSensitiveColumns(!showSensitiveColumns)}
-            >
-              {showSensitiveColumns ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              {showSensitiveColumns ? 'Hide Sensitive' : 'Show Sensitive'}
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+              <Input
+                type="text"
+                placeholder="Search tables and columns..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8 w-full md:w-[300px]"
+              />
+            </div>
+            
+            <Button variant="outline" onClick={copySchema}>
+              {copied ? (
+                <Check className="h-4 w-4 mr-2" />
+              ) : (
+                <Copy className="h-4 w-4 mr-2" />
+              )}
+              {copied ? "Copied!" : "Copy Schema"}
+            </Button>
+            
+            <Button>
+              <DownloadCloud className="h-4 w-4 mr-2" />
+              Export Schema
             </Button>
           </div>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-1">
+        
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList>
+            <TabsTrigger value="tables" className="flex items-center gap-1">
+              <Table2 className="h-4 w-4" />
+              Tables
+            </TabsTrigger>
+            <TabsTrigger value="columns" className="flex items-center gap-1">
+              <Database className="h-4 w-4" />
+              Columns
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="tables">
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2">
-                  <Database className="h-5 w-5 text-indigo-600" />
-                  Database Objects
-                </CardTitle>
+              <CardHeader>
+                <CardTitle>Database Tables</CardTitle>
                 <CardDescription>
-                  {filteredTables.length} tables and views
+                  Found {filteredTables.length} tables
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-                      <Input
-                        placeholder="Search tables..."
-                        className="pl-8"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                      />
-                    </div>
-                    
-                    <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                      <SelectTrigger className="w-[130px]">
-                        <SelectValue placeholder="Category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Categories</SelectItem>
-                        {categories.map(category => (
-                          <SelectItem key={category} value={category}>
-                            {category.charAt(0).toUpperCase() + category.slice(1)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <Button 
-                      variant={view === 'tables' ? 'default' : 'outline'} 
-                      size="sm"
-                      onClick={() => setView('tables')}
-                      className="flex-1"
-                    >
-                      <TableIcon className="h-4 w-4 mr-2" />
-                      Tables
-                    </Button>
-                    <Button 
-                      variant={view === 'relationships' ? 'default' : 'outline'} 
-                      size="sm"
-                      onClick={() => setView('relationships')}
-                      className="flex-1"
-                    >
-                      <Columns className="h-4 w-4 mr-2" />
-                      Relationships
-                    </Button>
-                  </div>
-                  
-                  <Separator />
-                  
-                  {isLoading ? (
-                    <div className="py-8 flex justify-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                    </div>
-                  ) : (
-                    <ScrollArea className="h-[600px] pr-4">
-                      <div className="space-y-1">
-                        {filteredTables.length > 0 ? (
-                          filteredTables.map(table => (
-                            <div 
+                <ScrollArea className="h-[600px] pr-4">
+                  <div className="space-y-4">
+                    {Object.entries(databaseSchema).map(([domain, domainData]) => (
+                      <div key={domain} className="space-y-2">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                          <Database className="h-5 w-5 text-gray-500" />
+                          {domain.charAt(0).toUpperCase() + domain.slice(1)}
+                          <Badge variant="outline" className="ml-2">
+                            {domainData.tables.length} tables
+                          </Badge>
+                        </h3>
+                        
+                        <div className="grid gap-3">
+                          {domainData.tables.map(table => (
+                            <Collapsible
                               key={table.name}
-                              className={`p-2 rounded-md cursor-pointer transition-colors ${selectedTable === table.name ? 'bg-indigo-50 text-indigo-900' : 'hover:bg-gray-100'}`}
-                              onClick={() => handleTableClick(table.name)}
+                              open={expandedTable === table.name}
+                              onOpenChange={() => handleTableClick(table.name)}
                             >
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center">
-                                  <div className="mr-2">
-                                    {table.type === 'view' ? (
-                                      <List className="h-4 w-4 text-blue-600" />
-                                    ) : (
-                                      <TableIcon className="h-4 w-4 text-indigo-600" />
-                                    )}
-                                  </div>
-                                  <div>
-                                    <p className="text-sm font-medium">{table.name}</p>
-                                    <div className="flex items-center gap-1">
-                                      <Badge variant="outline" className="text-xs">
-                                        {table.columns} columns
-                                      </Badge>
-                                      {table.hasSensitiveData && (
-                                        <Badge className="text-xs bg-amber-100 text-amber-800 hover:bg-amber-200">
-                                          sensitive
-                                        </Badge>
-                                      )}
+                              <CollapsibleTrigger asChild>
+                                <div className="flex items-center justify-between p-3 bg-white rounded-lg border cursor-pointer hover:bg-gray-50">
+                                  <div className="flex items-center gap-3">
+                                    <Table2 className="h-5 w-5 text-gray-500" />
+                                    <div>
+                                      <h4 className="font-medium text-gray-900">{table.name}</h4>
+                                      <p className="text-sm text-gray-500">{table.description}</p>
                                     </div>
                                   </div>
+                                  {expandedTable === table.name ? (
+                                    <ChevronDown className="h-5 w-5 text-gray-400" />
+                                  ) : (
+                                    <ChevronRight className="h-5 w-5 text-gray-400" />
+                                  )}
                                 </div>
-                                <Badge variant="secondary" className="text-xs">
-                                  {table.category}
-                                </Badge>
-                              </div>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="py-8 text-center text-gray-500">
-                            No tables match the current filters
-                          </div>
-                        )}
+                              </CollapsibleTrigger>
+                              <CollapsibleContent>
+                                <div className="mt-2 pl-11">
+                                  <Table>
+                                    <TableHeader>
+                                      <TableRow>
+                                        <TableHead>Column</TableHead>
+                                        <TableHead>Type</TableHead>
+                                        <TableHead>Description</TableHead>
+                                        <TableHead>Nullable</TableHead>
+                                      </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {table.columns.map(column => (
+                                        <TableRow key={column.name}>
+                                          <TableCell className="font-medium">
+                                            {column.name}
+                                            {table.primary_key === column.name && (
+                                              <Badge variant="outline" className="ml-2">
+                                                <Key className="h-3 w-3 mr-1" />
+                                                PK
+                                              </Badge>
+                                            )}
+                                          </TableCell>
+                                          <TableCell>
+                                            <code className="bg-gray-100 px-2 py-0.5 rounded text-sm">
+                                              {column.type}
+                                            </code>
+                                          </TableCell>
+                                          <TableCell className="text-gray-600">
+                                            {column.description}
+                                          </TableCell>
+                                          <TableCell>
+                                            <Badge variant={column.nullable ? "outline" : "secondary"}>
+                                              {column.nullable ? "NULL" : "NOT NULL"}
+                                            </Badge>
+                                          </TableCell>
+                                        </TableRow>
+                                      ))}
+                                    </TableBody>
+                                  </Table>
+                                </div>
+                              </CollapsibleContent>
+                            </Collapsible>
+                          ))}
+                        </div>
                       </div>
-                    </ScrollArea>
-                  )}
-                </div>
+                    ))}
+                  </div>
+                </ScrollArea>
               </CardContent>
             </Card>
-          </div>
+          </TabsContent>
           
-          <div className="md:col-span-2">
+          <TabsContent value="columns">
             <Card>
-              <CardHeader className="pb-3">
-                <div className="flex justify-between items-center">
-                  <CardTitle>
-                    {selectedTable ? (
-                      <span className="flex items-center">
-                        {schemaData?.tables.find(t => t.name === selectedTable)?.type === 'view' ? (
-                          <List className="h-5 w-5 text-blue-600 mr-2" />
-                        ) : (
-                          <TableIcon className="h-5 w-5 text-indigo-600 mr-2" />
-                        )}
-                        {selectedTable}
-                      </span>
-                    ) : (
-                      'Select a table to view details'
-                    )}
-                  </CardTitle>
-                  
-                  {selectedTable && tableStructures[selectedTable] && (
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => exportTableSchema(selectedTable)}
-                      className="flex items-center gap-2"
-                    >
-                      <Download className="h-4 w-4" />
-                      Export Schema
-                    </Button>
-                  )}
-                </div>
-                {selectedTable && (
-                  <CardDescription>
-                    {schemaData?.tables.find(t => t.name === selectedTable)?.type === 'view' ? 'View' : 'Table'} in {schemaData?.tables.find(t => t.name === selectedTable)?.schema} schema
-                  </CardDescription>
-                )}
+              <CardHeader>
+                <CardTitle>Database Columns</CardTitle>
+                <CardDescription>
+                  Found {filteredColumns.length} columns
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                {selectedTable ? (
-                  errorTable ? (
-                    <Alert className="bg-yellow-50 border-yellow-200">
-                      <AlertCircle className="h-4 w-4 text-yellow-600" />
-                      <AlertDescription className="text-yellow-700">
-                        Structure details are being loaded for {errorTable}. Please try again in a moment.
-                      </AlertDescription>
-                    </Alert>
-                  ) : tableStructures[selectedTable] ? (
-                    <ScrollArea className="h-[600px]">
-                      <Table>
-                        <TableHeader className="sticky top-0 bg-white">
-                          <TableRow>
-                            <TableHead className="w-[200px]">Column Name</TableHead>
-                            <TableHead>Data Type</TableHead>
-                            <TableHead className="text-center">Nullable</TableHead>
-                            <TableHead className="text-center">Primary Key</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {tableStructures[selectedTable]
-                            .filter(col => !col.isSensitive || showSensitiveColumns)
-                            .map(column => (
-                              <TableRow key={column.name}>
-                                <TableCell className="font-medium flex items-center">
-                                  {column.name}
-                                  {column.isSensitive && (
-                                    <Badge className="ml-2 bg-amber-100 text-amber-800 hover:bg-amber-200">
-                                      sensitive
-                                    </Badge>
-                                  )}
-                                </TableCell>
-                                <TableCell>{column.type}</TableCell>
-                                <TableCell className="text-center">
-                                  {column.nullable ? '✓' : ''}
-                                </TableCell>
-                                <TableCell className="text-center">
-                                  {column.isPrimary ? '✓' : ''}
-                                </TableCell>
-                              </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </ScrollArea>
-                  ) : (
-                    <div className="py-16 flex justify-center text-gray-500">
-                      {isLoading ? (
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                      ) : (
-                        <p>Structure details not available for this table</p>
-                      )}
-                    </div>
-                  )
-                ) : (
-                  <div className="py-16 flex justify-center items-center flex-col text-gray-500">
-                    <Database className="h-16 w-16 mb-4 text-gray-300" />
-                    <p>Select a table from the list to view its structure</p>
-                  </div>
-                )}
+                <ScrollArea className="h-[600px]">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Domain</TableHead>
+                        <TableHead>Table</TableHead>
+                        <TableHead>Column</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead>Nullable</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredColumns.map((column, i) => (
+                        <TableRow key={`${column.table}-${column.name}-${i}`}>
+                          <TableCell className="font-medium">
+                            {column.domain}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <Table2 className="h-4 w-4 text-gray-500" />
+                              {column.table}
+                            </div>
+                          </TableCell>
+                          <TableCell>{column.name}</TableCell>
+                          <TableCell>
+                            <code className="bg-gray-100 px-2 py-0.5 rounded text-sm">
+                              {column.type}
+                            </code>
+                          </TableCell>
+                          <TableCell className="text-gray-600">
+                            {column.description}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={column.nullable ? "outline" : "secondary"}>
+                              {column.nullable ? "NULL" : "NOT NULL"}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </ScrollArea>
               </CardContent>
             </Card>
-          </div>
-        </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
