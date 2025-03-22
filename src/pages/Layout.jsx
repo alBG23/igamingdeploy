@@ -51,6 +51,8 @@ export default function Layout({ children, currentPageName }) {
     { icon: FileWarning, label: "Data Validation", page: "DataValidation" },
     { icon: Database, label: "DB Schema", page: "SchemaDiscovery" },
     { icon: Database, label: "Data Import", page: "DataImport" },
+    { icon: Database, label: "Test CSV Upload", page: "DataImportTest" },
+    { icon: Server, label: "Middleware API Guide", page: "MiddlewareAPIGuide" },
     { icon: CloudIcon, label: "Azure Integration", page: "AzureIntegrationGuide" },
     { icon: Lock, label: "Env Variables Guide", page: "EnvironmentVariablesGuide" },
     { icon: Settings, label: "Integrations", page: "Integrations" },

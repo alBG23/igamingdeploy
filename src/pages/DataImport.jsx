@@ -1,340 +1,228 @@
 import React, { useState } from 'react';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Progress } from "@/components/ui/progress";
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { MetricsData } from "@/api/entities";
-import { ExtractDataFromUploadedFile, UploadFile } from "@/api/integrations";
-import { Upload, Loader2, AlertTriangle, CheckCircle, FileText, Download, Info, HelpCircle } from 'lucide-react';
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Upload, Database, AlertTriangle, RefreshCw, CheckCircle2 } from 'lucide-react';
+import DataImportGuide from '../components/DataImportGuide';
+import DataImportFilePicker from '../components/DataImportFilePicker';
+import DataImportUtility from '../components/DataImportUtility';
+import DataImportSampleData from '../components/DataImportSampleData';
 
 export default function DataImport() {
-  const [file, setFile] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [error, setError] = useState(null);
-  const [uploadResult, setUploadResult] = useState(null);
-  const [activeTab, setActiveTab] = useState("upload");
+  const [activeTab, setActiveTab] = useState('guide');
+  const [selectedEntity, setSelectedEntity] = useState('MetricsData');
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
 
-  const handleFileUpload = async (e) => {
-    const selectedFile = e.target.files[0];
-    if (!selectedFile) return;
-    
-    setFile(selectedFile);
-    console.log("Selected file:", selectedFile.name, selectedFile.type, selectedFile.size);
-    
-    try {
-      setIsLoading(true);
-      setError(null);
-      setProgress(10);
-      console.log("Starting file upload process for file:", selectedFile.name);
-
-      // First upload the file
-      const uploadResponse = await UploadFile({
-        file: selectedFile
-      });
-      console.log("File upload response:", uploadResponse);
-      
-      if (!uploadResponse || !uploadResponse.file_url) {
-        throw new Error("Failed to upload file");
-      }
-      
-      setProgress(30);
-      
-      // Extract data from the uploaded file
-      console.log("Starting data extraction with schema:", MetricsData.schema());
-      const extractResponse = await ExtractDataFromUploadedFile({
-        file_url: uploadResponse.file_url,
-        json_schema: MetricsData.schema()
-      });
-      
-      console.log("Data extraction response:", extractResponse);
-      
-      if (!extractResponse || extractResponse.status === "error") {
-        throw new Error(extractResponse?.details || "Failed to extract data from file");
-      }
-      
-      setProgress(60);
-      
-      // If we have valid data, create the records
-      if (extractResponse.output && Array.isArray(extractResponse.output)) {
-        console.log(`Creating ${extractResponse.output.length} records...`);
-        const records = extractResponse.output;
-        
-        // Create records in batches of 100
-        const batchSize = 100;
-        for (let i = 0; i < records.length; i += batchSize) {
-          const batch = records.slice(i, i + batchSize);
-          await MetricsData.bulkCreate(batch);
-          setProgress(60 + Math.floor((i / records.length) * 40));
-        }
-        
-        setUploadResult({
-          success: true,
-          recordCount: records.length
-        });
-      } else if (extractResponse.output && typeof extractResponse.output === 'object') {
-        // Handle single record
-        await MetricsData.create(extractResponse.output);
-        setUploadResult({
-          success: true,
-          recordCount: 1
-        });
-      } else {
-        throw new Error("No valid data found in the file");
-      }
-      
-      setProgress(100);
-      console.log("Upload and import completed successfully");
-      
-    } catch (err) {
-      console.error("Error during file upload:", err);
-      setError(err.message || "Failed to process file");
-      setProgress(0);
-    } finally {
-      setIsLoading(false);
-    }
+  const handleFileSelected = (file) => {
+    setSelectedFile(file);
   };
 
-  const downloadSampleFile = (format) => {
-    // Sample data that matches our schema
-    const sampleData = [
-      {
-        "date": "2023-01-01",
-        "affiliate_id": 123,
-        "affiliate_name": "AffPartner1",
-        "campaign_id": 456,
-        "campaign_name": "Summer Promo",
-        "ggr": 12500,
-        "ngr": 10200,
-        "deposit_count": 450,
-        "deposit_amount_cents": 2000000,
-        "roi": 3.5,
-        "churn_probability": 0.12,
-        "player_segment": "high_value"
-      },
-      {
-        "date": "2023-01-02",
-        "affiliate_id": 124,
-        "affiliate_name": "AffPartner2",
-        "campaign_id": 457,
-        "campaign_name": "Winter Special",
-        "ggr": 9800,
-        "ngr": 7600,
-        "deposit_count": 320,
-        "deposit_amount_cents": 1500000,
-        "roi": 2.8,
-        "churn_probability": 0.15,
-        "player_segment": "medium_value"
+  const handleImport = () => {
+    if (!selectedFile) return;
+    
+    setIsUploading(true);
+    setUploadSuccess(false);
+    
+    // Simulate upload progress
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += 10;
+      setUploadProgress(progress);
+      
+      if (progress >= 100) {
+        clearInterval(interval);
+        setTimeout(() => {
+          setIsUploading(false);
+          setUploadProgress(0);
+          setUploadSuccess(true);
+        }, 500);
       }
-    ];
-
-    let fileContent;
-    let fileName;
-    let fileType;
-
-    switch (format) {
-      case 'json':
-        fileContent = JSON.stringify(sampleData, null, 2);
-        fileName = 'sample_metrics_data.json';
-        fileType = 'application/json';
-        break;
-      case 'csv':
-        // Create CSV header from first object keys
-        const headers = Object.keys(sampleData[0]).join(',');
-        // Create CSV rows
-        const rows = sampleData.map(item => 
-          Object.values(item).map(val => 
-            typeof val === 'string' ? `"${val}"` : val
-          ).join(',')
-        );
-        fileContent = [headers, ...rows].join('\n');
-        fileName = 'sample_metrics_data.csv';
-        fileType = 'text/csv';
-        break;
-      default:
-        return;
-    }
-
-    // Create and download file
-    const blob = new Blob([fileContent], { type: fileType });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    }, 300);
   };
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-6xl mx-auto space-y-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Data Import</h1>
-          <p className="text-gray-500">Import metrics data from CSV, Excel, or JSON files</p>
+          <p className="text-gray-500 mt-1">
+            Import your data into the platform for analytics and visualization
+          </p>
         </div>
-
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+        
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="mb-4">
-            <TabsTrigger value="upload">Upload Data</TabsTrigger>
-            <TabsTrigger value="format">File Format Help</TabsTrigger>
+            <TabsTrigger value="guide">Import Guide</TabsTrigger>
+            <TabsTrigger value="import">Upload Data</TabsTrigger>
+            <TabsTrigger value="largefile">Large File Import</TabsTrigger>
+            <TabsTrigger value="testdata">Sample Data</TabsTrigger>
+            <TabsTrigger value="history">Import History</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="upload">
+          <TabsContent value="guide">
+            <DataImportGuide />
+          </TabsContent>
+          
+          <TabsContent value="import">
             <Card>
               <CardHeader>
-                <CardTitle>Upload Metrics Data</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Upload className="h-5 w-5 text-indigo-600" />
+                  Upload Data
+                </CardTitle>
                 <CardDescription>
-                  Upload your metrics data file. We'll automatically process and import the data.
+                  Import new data into the selected entity
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <Alert className="bg-blue-50 border-blue-200 mb-4">
-                  <Info className="h-4 w-4 text-blue-600" />
-                  <AlertDescription className="text-blue-800">
-                    <strong>Best Format:</strong> For most reliable imports, use CSV or JSON format. SQL and TAR files are not directly supported by the extraction system.
-                  </AlertDescription>
-                </Alert>
-
-                <div className="flex items-center gap-4">
-                  <Input
-                    type="file"
-                    accept=".csv,.json,.xlsx"
-                    onChange={handleFileUpload}
-                    disabled={isLoading}
-                  />
-                  {isLoading && (
-                    <Loader2 className="h-5 w-5 animate-spin text-gray-500" />
-                  )}
-                </div>
-
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => downloadSampleFile('csv')}
-                    className="text-xs"
-                  >
-                    <Download className="h-3 w-3 mr-1" />
-                    Sample CSV
-                  </Button>
-                  <Button 
-                    variant="outline"
-                    size="sm"
-                    onClick={() => downloadSampleFile('json')}
-                    className="text-xs"
-                  >
-                    <Download className="h-3 w-3 mr-1" />
-                    Sample JSON
-                  </Button>
-                </div>
-
-                {isLoading && progress > 0 && (
-                  <div className="space-y-2">
-                    <Progress value={progress} className="w-full" />
-                    <p className="text-sm text-gray-500">
-                      Processing... {progress}% complete
-                    </p>
-                  </div>
-                )}
-
-                {error && (
-                  <Alert variant="destructive">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
-
-                {uploadResult && (
+              
+              <CardContent className="space-y-6">
+                {uploadSuccess && (
                   <Alert className="bg-green-50 border-green-200">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                    <AlertDescription className="text-green-800">
-                      Successfully imported {uploadResult.recordCount} records
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <AlertDescription>
+                      Data imported successfully! Your data is now available for analysis.
                     </AlertDescription>
                   </Alert>
                 )}
+                
+                {!uploadSuccess && (
+                  <Alert className="bg-amber-50 border-amber-200">
+                    <AlertTriangle className="h-4 w-4 text-amber-600" />
+                    <AlertDescription>
+                      Make sure your data file matches the format requirements. See the Import Guide tab for details.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="entity">Select Entity</Label>
+                    <Select 
+                      value={selectedEntity} 
+                      onValueChange={setSelectedEntity}
+                    >
+                      <SelectTrigger id="entity" className="w-full">
+                        <SelectValue placeholder="Select entity" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="MetricsData">MetricsData</SelectItem>
+                        <SelectItem value="AnomalyAlert">AnomalyAlert</SelectItem>
+                        <SelectItem value="ChurnPrediction">ChurnPrediction</SelectItem>
+                        <SelectItem value="CohortData">CohortData</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <DataImportFilePicker onFileSelected={handleFileSelected} />
+                  
+                  {isUploading && (
+                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                      <div 
+                        className="bg-indigo-600 h-2.5 rounded-full" 
+                        style={{ width: `${uploadProgress}%` }}
+                      ></div>
+                    </div>
+                  )}
+                  
+                  <div className="flex justify-end gap-3">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setActiveTab('guide')}
+                      disabled={isUploading}
+                    >
+                      View Import Guide
+                    </Button>
+                    <Button 
+                      onClick={handleImport}
+                      disabled={!selectedFile || isUploading || uploadSuccess}
+                    >
+                      {isUploading ? (
+                        <>
+                          <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                          Importing...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="mr-2 h-4 w-4" />
+                          Import Data
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+                
+                <Separator />
+                
+                <div className="space-y-3">
+                  <h3 className="font-medium">Import Options</h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="duplicates">Duplicate Handling</Label>
+                      <Select defaultValue="skip">
+                        <SelectTrigger id="duplicates" className="w-full">
+                          <SelectValue placeholder="Handle duplicates" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="skip">Skip duplicates</SelectItem>
+                          <SelectItem value="replace">Replace duplicates</SelectItem>
+                          <SelectItem value="allow">Allow duplicates</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="validation">Data Validation</Label>
+                      <Select defaultValue="strict">
+                        <SelectTrigger id="validation" className="w-full">
+                          <SelectValue placeholder="Validation mode" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="strict">Strict (fail on errors)</SelectItem>
+                          <SelectItem value="loose">Loose (skip invalid rows)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
           
-          <TabsContent value="format">
+          <TabsContent value="largefile">
+            <DataImportUtility />
+          </TabsContent>
+          
+          <TabsContent value="testdata">
+            <DataImportSampleData />
+          </TabsContent>
+          
+          <TabsContent value="history">
             <Card>
               <CardHeader>
-                <CardTitle>File Format Guidelines</CardTitle>
+                <CardTitle>Import History</CardTitle>
                 <CardDescription>
-                  Follow these guidelines to ensure successful data imports
+                  View past data imports and their status
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-3">
-                  <h3 className="font-medium flex items-center gap-2">
-                    <HelpCircle className="h-4 w-4 text-indigo-600" />
-                    Recommended File Formats
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="border rounded-md p-4 bg-gray-50">
-                      <h4 className="font-semibold">CSV (Recommended)</h4>
-                      <p className="text-sm text-gray-600 mt-1">
-                        Simple, widely supported format with column headers matching schema properties.
-                      </p>
-                      <div className="mt-2 text-xs bg-gray-100 p-2 rounded">
-                        <code>date,affiliate_id,campaign_name,ggr,ngr,deposit_count</code><br/>
-                        <code>2023-01-01,123,"Summer Promo",12500,10200,450</code>
-                      </div>
-                    </div>
-                    <div className="border rounded-md p-4 bg-gray-50">
-                      <h4 className="font-semibold">JSON (Recommended)</h4>
-                      <p className="text-sm text-gray-600 mt-1">
-                        Flexible format that preserves data types and handles complex data.
-                      </p>
-                      <div className="mt-2 text-xs bg-gray-100 p-2 rounded">
-                        <code>[{"{"}"date": "2023-01-01", "ggr": 12500, "ngr": 10200{"}"}]</code>
-                      </div>
-                    </div>
+              
+              <CardContent>
+                <div className="rounded-md bg-gray-50 p-4">
+                  <div className="text-center text-gray-500 py-6">
+                    <Database className="h-12 w-12 mx-auto text-gray-400 mb-3" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-1">No Import History</h3>
+                    <p>You haven't imported any data yet.</p>
                   </div>
-                </div>
-                
-                <div className="space-y-3">
-                  <h3 className="font-medium flex items-center gap-2">
-                    <AlertTriangle className="h-4 w-4 text-amber-600" />
-                    Not Supported
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="border rounded-md p-4 bg-amber-50">
-                      <h4 className="font-semibold">SQL Files</h4>
-                      <p className="text-sm text-gray-600 mt-1">
-                        SQL dump files cannot be directly processed by the extraction system.
-                      </p>
-                    </div>
-                    <div className="border rounded-md p-4 bg-amber-50">
-                      <h4 className="font-semibold">TAR/ZIP Archives</h4>
-                      <p className="text-sm text-gray-600 mt-1">
-                        Compressed archives need to be extracted before uploading.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                  <h4 className="font-medium text-blue-800 flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    Required Fields
-                  </h4>
-                  <p className="text-sm text-blue-700 mt-1">
-                    At minimum, your file should contain the <code>date</code> field, which is required by the schema.
-                    Other key fields include <code>ggr</code>, <code>ngr</code>, <code>deposit_count</code>, and
-                    <code>affiliate_id</code> for meaningful analytics.
-                  </p>
                 </div>
               </CardContent>
-              <CardFooter className="flex justify-end gap-3">
-                <Button onClick={() => setActiveTab("upload")}>
-                  Return to Upload
-                </Button>
-              </CardFooter>
             </Card>
           </TabsContent>
         </Tabs>

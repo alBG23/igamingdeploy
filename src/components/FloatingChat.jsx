@@ -1,651 +1,483 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
-import { Brain, ChevronDown, SendIcon, X, FileText, BarChart, Volume2, Pause, DownloadCloud, Share2, RefreshCw, Loader2, Check, AlertTriangle, Settings } from 'lucide-react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ResponsiveContainer, BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell } from 'recharts';
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle, Bot, Loader2, Maximize2, Minimize2, Send, User, X, BookOpen, BarChart3, LineChart, FileText, PieChart } from 'lucide-react';
 import { InvokeLLM } from "@/api/integrations";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import { User as UserEntity } from "@/api/entities";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import ChatDataVisualizer from './chat/ChatDataVisualizer';
 
 export default function FloatingChat() {
   const [isOpen, setIsOpen] = useState(false);
-  const [inputValue, setInputValue] = useState('');
   const [messages, setMessages] = useState([
-    { 
-      type: 'assistant', 
-      content: 'Hello! I\'m your iGaming Analytics Assistant. How can I help you today?' 
-    }
+    { role: 'assistant', content: 'Hello! I\'m your iGaming Analytics Assistant. How can I help you? Ask me to show data in charts or tables.', type: 'text' }
   ]);
-  const [activeView, setActiveView] = useState('chat');
-  const [isThinking, setIsThinking] = useState(false);
-  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
-  const [temporaryReport, setTemporaryReport] = useState(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [audioProgress, setAudioProgress] = useState(0);
-  const [audioSrc, setAudioSrc] = useState('');
-  const [audioError, setAudioError] = useState(false);
-  const [aiSettings, setAiSettings] = useState({
-    model: "openai_gpt4",
-    voice: "alloy",
-    useTrainedModel: true,
-    useWebSearch: false
-  });
-  const audioRef = useRef(null);
+  const [input, setInput] = useState('');
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [isApiConfigured, setIsApiConfigured] = useState(true);
+  const [userTrainingLoaded, setUserTrainingLoaded] = useState(false);
   const messagesEndRef = useRef(null);
   
-  const COLORS = ['#4F46E5', '#06B6D4', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981'];
+  useEffect(() => {
+    const checkApiKey = async () => {
+      try {
+        const user = await UserEntity.me();
+        if (user && user.openai_api_key) {
+          setIsApiConfigured(true);
+          if (user.ai_terms || user.ai_guidelines || user.ai_training_data) {
+            setUserTrainingLoaded(true);
+          }
+        }
+      } catch (error) {
+        console.error("Error checking API key:", error);
+      }
+    };
+    
+    checkApiKey();
+  }, []);
 
-  // Sample data for demo
-  const sampleReportData = {
-    title: "Quick Revenue Breakdown by Game Category",
-    description: "30-day snapshot of revenue distribution across game categories",
-    chartType: "pie",
-    data: [
-      { name: 'Slots', value: 45 },
-      { name: 'Live Casino', value: 25 },
-      { name: 'Sports Betting', value: 20 },
-      { name: 'Table Games', value: 10 }
-    ],
-    insights: [
-      "Slots continue to be your highest revenue generator at 45% of total NGR",
-      "Live Casino shows 12% growth compared to previous period",
-      "Sports Betting conversion rates need attention - 5% below industry average"
-    ],
-    recommendations: [
-      "Consider reallocating 10% of acquisition budget from Table Games to Live Casino",
-      "Optimize Sports Betting journey to address 23% drop-off during registration"
-    ]
-  };
-
-  // Alternative report for bar chart demo
-  const sampleBarChartData = {
-    title: "Affiliate Performance Comparison",
-    description: "Comparison of top 5 affiliates by key metrics",
-    chartType: "bar",
-    data: [
-      { name: 'TopAffiliates', ftds: 65, roi: 2.5, churn: 22 },
-      { name: 'CasinoPartners', ftds: 45, roi: 2.8, churn: 18 },
-      { name: 'GamingAff', ftds: 80, roi: 2.4, churn: 25 },
-      { name: 'BetPromo', ftds: 55, roi: 2.5, churn: 20 },
-      { name: 'SlotPartners', ftds: 70, roi: 2.3, churn: 21 }
-    ],
-    insights: [
-      "CasinoPartners shows highest ROI with lowest churn rate",
-      "GamingAff delivers highest volume but has concerning churn rate",
-      "SlotPartners performance has declined 8% since last month"
-    ],
-    recommendations: [
-      "Increase CPA with CasinoPartners to boost volume",
-      "Work with GamingAff to implement targeted retention campaigns"
-    ]
-  };
-  
-  // Scroll to bottom when messages change
   useEffect(() => {
     if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
 
-  const handleSend = async () => {
-    if (!inputValue.trim()) return;
+  const detectChartType = (text) => {
+    const lowerText = text.toLowerCase();
+    if (lowerText.includes('pie chart') || lowerText.includes('distribution') || lowerText.includes('breakdown')) {
+      return 'pie';
+    } else if (lowerText.includes('line chart') || lowerText.includes('trend') || lowerText.includes('over time') || lowerText.includes('historical')) {
+      return 'line';
+    } else if (lowerText.includes('bar chart') || lowerText.includes('comparison') || lowerText.includes('compare')) {
+      return 'chart';
+    }
+    return 'chart';
+  };
+
+  const detectVisualizationType = (text) => {
+    const lowerText = text.toLowerCase();
+    if (
+      lowerText.includes('chart') || 
+      lowerText.includes('graph') || 
+      lowerText.includes('plot') || 
+      lowerText.includes('visualize') || 
+      lowerText.includes('visualization')
+    ) {
+      return detectChartType(text);
+    }
     
-    // Add user message
-    const userMessage = inputValue;
-    setMessages(prev => [...prev, { type: 'user', content: userMessage }]);
-    setInputValue('');
-    setIsThinking(true);
+    if (
+      lowerText.includes('table') || 
+      lowerText.includes('tabulate') || 
+      lowerText.includes('grid')
+    ) {
+      return 'table';
+    }
     
-    // Build context from previous messages for OpenAI
-    const conversationContext = messages.map(msg => 
-      `${msg.type === 'user' ? 'User' : 'Assistant'}: ${msg.content}`
-    ).join('\n');
+    if (
+      lowerText.includes('report') || 
+      lowerText.includes('summary') || 
+      lowerText.includes('overview')
+    ) {
+      return 'report';
+    }
+    
+    return null;
+  };
+
+  const generateMockDataForVisualization = (type, query) => {
+    const lowerQuery = query.toLowerCase();
+    if (type === 'chart' || type === 'bar') {
+      if (lowerQuery.includes('game') || lowerQuery.includes('casino') || lowerQuery.includes('category')) {
+        return [
+          { category: 'Slots', value: 42500 },
+          { category: 'Table Games', value: 28350 },
+          { category: 'Live Casino', value: 37800 },
+          { category: 'Sports', value: 19500 },
+          { category: 'Poker', value: 15200 }
+        ];
+      } else if (lowerQuery.includes('country') || lowerQuery.includes('geo') || lowerQuery.includes('region')) {
+        return [
+          { category: 'UK', value: 35400 },
+          { category: 'Germany', value: 29300 },
+          { category: 'Sweden', value: 25600 },
+          { category: 'Denmark', value: 18900 },
+          { category: 'Finland', value: 15700 }
+        ];
+      } else if (lowerQuery.includes('deposit') || lowerQuery.includes('payment')) {
+        return [
+          { category: 'Credit Card', value: 38500 },
+          { category: 'e-Wallets', value: 32700 },
+          { category: 'Bank Transfer', value: 24300 },
+          { category: 'Crypto', value: 18600 },
+          { category: 'Other', value: 9800 }
+        ];
+      } else {
+        return [
+          { category: 'Slots', value: 42500 },
+          { category: 'Table Games', value: 28350 },
+          { category: 'Live Casino', value: 37800 },
+          { category: 'Sports', value: 19500 },
+          { category: 'Poker', value: 15200 }
+        ];
+      }
+    } else if (type === 'pie') {
+      if (lowerQuery.includes('game') || lowerQuery.includes('casino') || lowerQuery.includes('category')) {
+        return [
+          { name: 'Slots', value: 42 },
+          { name: 'Table Games', value: 28 },
+          { name: 'Live Casino', value: 38 },
+          { name: 'Sports', value: 20 },
+          { name: 'Poker', value: 15 }
+        ];
+      } else if (lowerQuery.includes('device') || lowerQuery.includes('platform')) {
+        return [
+          { name: 'Mobile', value: 65 },
+          { name: 'Desktop', value: 30 },
+          { name: 'Tablet', value: 5 }
+        ];
+      } else if (lowerQuery.includes('deposit') || lowerQuery.includes('payment')) {
+        return [
+          { name: 'Credit Card', value: 38 },
+          { name: 'e-Wallets', value: 33 },
+          { name: 'Bank Transfer', value: 24 },
+          { name: 'Crypto', value: 19 },
+          { name: 'Other', value: 10 }
+        ];
+      } else {
+        return [
+          { name: 'Casual', value: 45 },
+          { name: 'Regular', value: 30 },
+          { name: 'VIP', value: 15 },
+          { name: 'Inactive', value: 10 }
+        ];
+      }
+    } else if (type === 'line') {
+      if (lowerQuery.includes('ggr') || lowerQuery.includes('revenue') || lowerQuery.includes('income')) {
+        return [
+          { date: 'Jan', ggr: 32000, ngr: 24000 },
+          { date: 'Feb', ggr: 35800, ngr: 27500 },
+          { date: 'Mar', ggr: 40200, ngr: 31800 },
+          { date: 'Apr', ggr: 38500, ngr: 29700 },
+          { date: 'May', ggr: 42100, ngr: 33600 },
+          { date: 'Jun', ggr: 45800, ngr: 36400 }
+        ];
+      } else if (lowerQuery.includes('player') || lowerQuery.includes('user')) {
+        return [
+          { date: 'Jan', active: 3200, new: 840 },
+          { date: 'Feb', active: 3580, new: 920 },
+          { date: 'Mar', active: 4020, new: 1050 },
+          { date: 'Apr', active: 3850, new: 980 },
+          { date: 'May', active: 4210, new: 1120 },
+          { date: 'Jun', active: 4580, new: 1240 }
+        ];
+      } else if (lowerQuery.includes('conversion') || lowerQuery.includes('retention')) {
+        return [
+          { date: 'Jan', conversion: 22.4, retention: 42.5 },
+          { date: 'Feb', conversion: 23.8, retention: 43.2 },
+          { date: 'Mar', conversion: 25.1, retention: 45.8 },
+          { date: 'Apr', conversion: 24.5, retention: 44.3 },
+          { date: 'May', conversion: 26.2, retention: 46.5 },
+          { date: 'Jun', conversion: 27.1, retention: 48.2 }
+        ];
+      } else {
+        return [
+          { date: 'Jan', ggr: 32000, ngr: 24000, deposits: 48000 },
+          { date: 'Feb', ggr: 35800, ngr: 27500, deposits: 52000 },
+          { date: 'Mar', ggr: 40200, ngr: 31800, deposits: 58000 },
+          { date: 'Apr', ggr: 38500, ngr: 29700, deposits: 54000 },
+          { date: 'May', ggr: 42100, ngr: 33600, deposits: 60000 },
+          { date: 'Jun', ggr: 45800, ngr: 36400, deposits: 65000 }
+        ];
+      }
+    } else if (type === 'table') {
+      if (lowerQuery.includes('metrics') || lowerQuery.includes('kpi') || lowerQuery.includes('overview')) {
+        return [
+          { metric: 'GGR', value: '$124,500', change: '+12.5%' },
+          { metric: 'NGR', value: '$98,700', change: '+8.2%' },
+          { metric: 'Active Players', value: '4,278', change: '+5.8%' },
+          { metric: 'New Sign-ups', value: '843', change: '+2.1%' },
+          { metric: 'Conversion Rate', value: '22.5%', change: '-0.8%' }
+        ];
+      } else if (lowerQuery.includes('affiliate') || lowerQuery.includes('marketing')) {
+        return [
+          { affiliate: 'Affiliate A', players: 845, revenue: '$28,500', cpa: '$35' },
+          { affiliate: 'Affiliate B', players: 620, revenue: '$19,800', cpa: '$32' },
+          { affiliate: 'Affiliate C', players: 540, revenue: '$16,200', cpa: '$30' },
+          { affiliate: 'Affiliate D', players: 380, revenue: '$12,500', cpa: '$33' },
+          { affiliate: 'Affiliate E', players: 320, revenue: '$9,800', cpa: '$31' }
+        ];
+      } else if (lowerQuery.includes('game') || lowerQuery.includes('popular')) {
+        return [
+          { game: 'Book of Dead', provider: 'Play\'n GO', spins: '124,500', ggr: '$18,700' },
+          { game: 'Starburst', provider: 'NetEnt', spins: '98,700', ggr: '$15,200' },
+          { game: 'Gonzo\'s Quest', provider: 'NetEnt', spins: '85,200', ggr: '$13,800' },
+          { game: 'Sweet Bonanza', provider: 'Pragmatic', spins: '76,500', ggr: '$12,300' },
+          { game: 'Wolf Gold', provider: 'Pragmatic', spins: '68,900', ggr: '$10,500' }
+        ];
+      } else {
+        return [
+          { metric: 'GGR', value: '$124,500', change: '+12.5%' },
+          { metric: 'NGR', value: '$98,700', change: '+8.2%' },
+          { metric: 'Active Players', value: '4,278', change: '+5.8%' },
+          { metric: 'New Sign-ups', value: '843', change: '+2.1%' },
+          { metric: 'Conversion Rate', value: '22.5%', change: '-0.8%' }
+        ];
+      }
+    } else if (type === 'report') {
+      return [
+        { 
+          title: 'Revenue Overview', 
+          subtitle: 'Last 30 days performance',
+          content: 'GGR reached $124,500 with a 12.5% increase over the previous period. Slots remain the most popular game category contributing 38% of total GGR.'
+        },
+        {
+          title: 'Player Activity',
+          content: 'Active players increased by 5.8% to 4,278. Player retention rate is at 42% which is above industry average.'
+        },
+        {
+          title: 'Recommendations',
+          content: '1. Increase marketing for live casino games which show the highest ROI\n2. Review table games which are showing lower engagement\n3. Target churn risk players with personalized offers'
+        }
+      ];
+    }
+    
+    return [];
+  };
+
+  const handleSendMessage = async () => {
+    if (!input.trim()) return;
+    
+    const userMessage = { role: 'user', content: input, type: 'text' };
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
+    setIsLoading(true);
+    setError(null);
     
     try {
-      // Check if this is a report request
-      const lowerCaseMessage = userMessage.toLowerCase();
-      const reportKeywords = ['report', 'chart', 'graph', 'show me', 'visualize', 'display'];
-      const isReportRequest = reportKeywords.some(keyword => lowerCaseMessage.includes(keyword));
+      const visualizationType = detectVisualizationType(input);
       
-      if (isReportRequest) {
-        // Generate report with OpenAI
-        setIsGeneratingReport(true);
+      if (visualizationType) {
+        let explanation = '';
         
-        // Generate AI response using InvokeLLM integration
-        const response = await InvokeLLM({
-          prompt: `You are an iGaming analytics AI assistant helping with data visualization. 
-          The user has requested: "${userMessage}".
-          Based on this request, determine the most appropriate visualization to show.
-          Reply with a conversational response that informs the user you've created a visualization
-          and asks if they'd like you to explain the key insights.
-          Keep your response under 2 sentences and conversational.
-          
-          Previous conversation:
-          ${conversationContext}`,
-          add_context_from_internet: aiSettings.useWebSearch
-        });
-        
-        setMessages(prev => [...prev, { 
-          type: 'assistant', 
-          content: response
-        }]);
-        
-        // Determine which chart to show based on the query
-        const isAffiliateQuery = lowerCaseMessage.includes('affiliate') || 
-                              lowerCaseMessage.includes('performance') ||
-                              lowerCaseMessage.includes('compare');
-        
-        setTemporaryReport(isAffiliateQuery ? sampleBarChartData : sampleReportData);
-        setIsGeneratingReport(false);
-        setActiveView('report');
-      } 
-      // Handle voice readout request
-      else if (lowerCaseMessage.includes('read') || 
-              lowerCaseMessage.includes('speak') || 
-              lowerCaseMessage.includes('tell me')) {
-        
-        // Generate AI response using InvokeLLM integration
-        const response = await InvokeLLM({
-          prompt: `You are an iGaming analytics AI assistant. 
-          The user has requested: "${userMessage}".
-          If it looks like a request to read out loud the report or data, respond briefly confirming you'll read it out loud.
-          If there's no report to read, kindly explain that and ask if they'd like to generate a report first.
-          Keep your response friendly, brief and conversational.
-          
-          Previous conversation:
-          ${conversationContext}`,
-          add_context_from_internet: aiSettings.useWebSearch
-        });
-        
-        setMessages(prev => [...prev, { 
-          type: 'assistant', 
-          content: response
-        }]);
-        
-        if (temporaryReport) {
-          // Switch to report view and prepare to read it
-          setActiveView('report');
-          setTimeout(() => generateOpenAIAudio(), 500);
+        if (visualizationType === 'pie' || visualizationType === 'chart' || visualizationType === 'line') {
+          explanation = `Here's a ${visualizationType === 'chart' ? 'bar' : visualizationType} chart showing the data you requested. This visualization uses sample data to illustrate typical patterns in iGaming analytics.`;
+        } else if (visualizationType === 'table') {
+          explanation = "Here's a table with the data you requested. This shows sample metrics that would typically be analyzed in iGaming operations.";
+        } else if (visualizationType === 'report') {
+          explanation = "I've prepared a brief report based on your request. This includes sample insights and recommendations based on typical iGaming performance metrics.";
         }
-      }
-      // Regular conversation
-      else {
-        // Generate AI response using InvokeLLM integration
-        const response = await InvokeLLM({
-          prompt: `You are an iGaming analytics AI assistant that helps analyze gaming data.
-          Respond to this user message: "${userMessage}"
-          
-          Context:
-          - You are part of an iGaming analytics platform.
-          - You can help with analyzing revenue trends, player behavior, affiliate performance, etc.
-          - When the user asks about actual data, give example insights based on industry knowledge.
-          - Keep your response concise (max 2-3 sentences), helpful and conversational.
-          - For complex questions, you can suggest generating a visualization.
-          
-          Previous conversation:
-          ${conversationContext}`,
-          add_context_from_internet: aiSettings.useWebSearch
-        });
         
         setMessages(prev => [...prev, { 
-          type: 'assistant', 
-          content: response
+          role: 'assistant', 
+          content: explanation,
+          type: 'text'
+        }]);
+        
+        const mockData = generateMockDataForVisualization(visualizationType, input);
+        
+        setTimeout(() => {
+          setMessages(prev => [...prev, { 
+            role: 'assistant', 
+            content: {
+              type: visualizationType,
+              title: input,
+              data: mockData
+            },
+            type: 'visualization'
+          }]);
+        }, 500);
+        
+      } else {
+        let response = "I don't have specific data about your iGaming platform, but I can provide general insights about the industry. Feel free to ask me to show specific data in charts or tables.";
+        
+        const lowerInput = input.toLowerCase();
+        
+        if (lowerInput.includes('ggr') || lowerInput.includes('revenue')) {
+          response = "GGR (Gross Gaming Revenue) is a key metric in iGaming. It represents the total amount wagered minus the winnings paid to players. Ask me to 'show GGR in a chart' to visualize sample data.";
+        } else if (lowerInput.includes('player') || lowerInput.includes('user')) {
+          response = "Player metrics like acquisition, retention, and activity are crucial for iGaming success. Ask me to 'show player trends in a line chart' to visualize sample data.";
+        } else if (lowerInput.includes('conversion') || lowerInput.includes('retention')) {
+          response = "Conversion and retention are critical KPIs for iGaming businesses. Industry averages vary, but successful operators typically achieve 25-30% conversion from registration to first deposit, and 40-45% 30-day retention. Ask me to 'show conversion trends' to visualize sample data.";
+        } else if (lowerInput.includes('affiliate') || lowerInput.includes('marketing')) {
+          response = "Affiliate marketing is a major acquisition channel for iGaming. Effective programs typically offer revenue share (25-45%) or CPA ($35-$200 depending on market). Ask me to 'show affiliate performance in a table' to see sample data.";
+        } else if (lowerInput.includes('game') || lowerInput.includes('casino') || lowerInput.includes('popular')) {
+          response = "Game popularity varies by market, but slots typically generate 40-60% of casino GGR, followed by live dealer games (15-30%) and table games (10-20%). Ask me to 'show game category distribution in a pie chart' to visualize sample data.";
+        } else if (lowerInput.includes('chart') || lowerInput.includes('table') || lowerInput.includes('report')) {
+          response = "I can generate sample visualizations for iGaming data. Try asking me to 'show GGR trends in a line chart', 'display player segments in a pie chart', or 'create a table of key metrics'.";
+        } else if (lowerInput.includes('hello') || lowerInput.includes('hi') || lowerInput.includes('hey')) {
+          response = "Hello! I'm your iGaming Analytics Assistant. You can ask me questions about iGaming metrics or request sample visualizations. Try saying 'show me GGR by game category' or 'create a player retention chart'.";
+        }
+        
+        setMessages(prev => [...prev, { 
+          role: 'assistant', 
+          content: response, 
+          type: 'text' 
         }]);
       }
     } catch (error) {
-      console.error("Error with LLM:", error);
-      // Fallback response
-      setMessages(prev => [...prev, { 
-        type: 'assistant', 
-        content: "I'm having trouble processing your request right now. Could you try again?"
-      }]);
+      console.error("Error processing message:", error);
+      setError("Something went wrong. Please try again.");
     } finally {
-      setIsThinking(false);
+      setIsLoading(false);
     }
   };
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
-    }
-  };
-  
-  const prepareReadoutText = (report) => {
-    if (!report) return '';
-    
-    // Create more natural, conversational text for speech
-    let text = `Here's a quick overview of ${report.title.toLowerCase()}. `;
-    
-    // Add just 2-3 key points instead of everything for brevity
-    if (report.insights.length > 0) {
-      text += "The main takeaways are: ";
-      // Only use the first 2 insights for brevity
-      report.insights.slice(0, 2).forEach((insight, i) => {
-        text += `${insight}. `;
-      });
-    }
-    
-    // Add just 1 recommendation for brevity
-    if (report.recommendations.length > 0) {
-      text += "My main recommendation is to ";
-      // Extract just the action part without the "Consider" prefix
-      const recommendation = report.recommendations[0]
-        .replace(/^Consider /i, "")
-        .replace(/^Optimize /i, "optimize ")
-        .replace(/^Increase /i, "increase ");
-        
-      text += `${recommendation}.`;
-    }
-    
-    return text;
-  };
-  
-  const generateOpenAIAudio = async () => {
-    if (!temporaryReport) return;
-    
-    try {
-      const text = prepareReadoutText(temporaryReport);
-      setAudioError(false);
-      setIsPlaying(true);
-      setAudioProgress(10); // Show initial progress
-      
-      // Here we use InvokeLLM as a proxy to access TTS services
-      // In a real implementation, you would use the OpenAI TTS API directly
-      // For this demo, we'll simulate the effect
-      
-      // For a real implementation, you would:
-      // 1. Call your backend API that interfaces with OpenAI's TTS API
-      // 2. Get back an audio URL to play
-      
-      // Since we don't have direct access to OpenAI's TTS API in this demo,
-      // we'll simulate an audio response here
-      
-      // First, get a more natural-sounding text version from OpenAI
-      const enhancedText = await InvokeLLM({
-        prompt: `You are an AI that rephrases text to sound very natural when spoken by a text-to-speech system.
-        Rephrase this analytics report for a very natural, concise voice readout that sounds like a professional analyst:
-        "${text}"
-        
-        Keep the same information but make it sound more conversational, direct and natural.
-        Use shorter sentences and a more flowing structure.
-        Keep it brief - under 100 words.`,
-        add_context_from_internet: false
-      });
-      
-      setAudioProgress(30);
-      
-      // Simulate audio generation delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // In a real implementation, this would be the URL returned from OpenAI's TTS API
-      const demoAudioUrl = "https://actions.google.com/sounds/v1/science_fiction/alien_beam.ogg";
-      
-      setAudioSrc(demoAudioUrl);
-      setAudioProgress(90);
-      
-      if (audioRef.current) {
-        audioRef.current.onended = () => {
-          setIsPlaying(false);
-          setAudioProgress(100);
-        };
-        audioRef.current.onerror = () => {
-          setAudioError(true);
-          setIsPlaying(false);
-        };
-        audioRef.current.play();
-      }
-      
-    } catch (error) {
-      console.error("Error generating audio:", error);
-      setAudioError(true);
-      setIsPlaying(false);
-    }
-  };
-  
-  const toggleVoicePlayback = () => {
-    if (isPlaying) {
-      // Pause audio
-      if (audioRef.current) {
-        audioRef.current.pause();
-      }
-      setIsPlaying(false);
-    } else {
-      // Start audio
-      generateOpenAIAudio();
+      handleSendMessage();
     }
   };
 
+  if (!isOpen) {
+    return (
+      <Button
+        onClick={() => setIsOpen(true)}
+        className="fixed bottom-5 right-5 h-14 w-14 rounded-full bg-indigo-600 hover:bg-indigo-700 shadow-lg"
+      >
+        <Bot className="h-6 w-6 text-white" />
+      </Button>
+    );
+  }
+
   return (
-    <>
-      {/* Audio element for OpenAI TTS */}
-      <audio 
-        ref={audioRef} 
-        src={audioSrc} 
-        style={{ display: 'none' }}
-      />
-      
-      {/* Floating button */}
-      <div className="fixed bottom-4 right-4 z-50">
-        {!isOpen && (
-          <Button 
-            onClick={() => setIsOpen(true)} 
-            size="icon" 
-            className="h-12 w-12 rounded-full shadow-lg bg-indigo-600 hover:bg-indigo-700"
+    <Card className={`fixed bottom-5 right-5 ${isExpanded ? 'w-[90vw] h-[90vh] max-w-4xl' : 'w-96 h-[550px]'} shadow-xl transition-all duration-200 z-50 flex flex-col overflow-hidden`}>
+      <CardHeader className="p-3 border-b flex flex-row items-center justify-between space-y-0 shrink-0">
+        <CardTitle className="text-md flex items-center">
+          <Bot className="h-5 w-5 mr-2 text-indigo-600" />
+          iGaming AI Assistant
+          {!isApiConfigured ? (
+            <span className="text-xs ml-2 text-red-500">(Demo Mode)</span>
+          ) : userTrainingLoaded ? (
+            <Badge className="ml-2 text-xs bg-green-100 text-green-800">
+              <BookOpen className="h-3 w-3 mr-1" /> 
+              Trained
+            </Badge>
+          ) : null}
+        </CardTitle>
+        <div className="flex space-x-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => setIsExpanded(!isExpanded)}
           >
-            <Brain className="h-6 w-6" />
+            {isExpanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </Button>
-        )}
-        
-        {/* Chat panel */}
-        {isOpen && (
-          <Card className="w-80 md:w-[450px] shadow-xl border-gray-200 overflow-hidden">
-            <CardHeader className="bg-indigo-600 text-white py-3 px-4 flex flex-row justify-between items-center">
-              <CardTitle className="text-sm font-medium flex items-center">
-                <Brain className="h-4 w-4 mr-2" />
-                AI Analytics Assistant {aiSettings.useTrainedModel && "(Trained Model)"}
-              </CardTitle>
-              
-              <div className="flex items-center gap-2">
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-6 w-6 text-white hover:bg-indigo-700 rounded-full p-0"
-                    >
-                      <Settings className="h-4 w-4" />
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>AI Assistant Settings</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 py-2">
-                      <div className="space-y-2">
-                        <Label>AI Model</Label>
-                        <Select
-                          value={aiSettings.model}
-                          onValueChange={(val) => setAiSettings({...aiSettings, model: val})}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select AI model" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="openai_gpt4">OpenAI GPT-4 Turbo</SelectItem>
-                            <SelectItem value="openai_gpt35">OpenAI GPT-3.5 Turbo</SelectItem>
-                            <SelectItem value="anthropic_claude3">Anthropic Claude 3</SelectItem>
-                            <SelectItem value="google_gemini">Google Gemini Pro</SelectItem>
-                            <SelectItem value="meta_llama3">Meta Llama 3</SelectItem>
-                            <SelectItem value="mistral_large">Mistral Large</SelectItem>
-                            <SelectItem value="deepseek_coder">DeepSeek Coder</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label>Voice for Text-to-Speech</Label>
-                        <Select
-                          value={aiSettings.voice}
-                          onValueChange={(val) => setAiSettings({...aiSettings, voice: val})}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select voice" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="alloy">Alloy (Neutral)</SelectItem>
-                            <SelectItem value="shimmer">Shimmer (Female)</SelectItem>
-                            <SelectItem value="nova">Nova (Female)</SelectItem>
-                            <SelectItem value="echo">Echo (Male)</SelectItem>
-                            <SelectItem value="fable">Fable (Male)</SelectItem>
-                            <SelectItem value="onyx">Onyx (Male)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="trained-model">Use your trained model</Label>
-                        <Switch 
-                          id="trained-model" 
-                          checked={aiSettings.useTrainedModel}
-                          onCheckedChange={(checked) => setAiSettings({...aiSettings, useTrainedModel: checked})}
-                        />
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="web-search">Use web search for context</Label>
-                        <Switch 
-                          id="web-search" 
-                          checked={aiSettings.useWebSearch}
-                          onCheckedChange={(checked) => setAiSettings({...aiSettings, useWebSearch: checked})}
-                        />
-                      </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => setIsOpen(false)}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      </CardHeader>
+      
+      <div className="flex-grow overflow-hidden relative">
+        <ScrollArea className="absolute inset-0 h-full">
+          <div className="p-4 space-y-4">
+            {messages.map((message, index) => (
+              <div
+                key={index}
+                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                {message.type === 'visualization' ? (
+                  <div className="w-full max-w-full bg-white rounded-lg shadow p-3 border">
+                    <div className="flex items-center gap-2 mb-2">
+                      {message.content.type === 'chart' && <BarChart3 className="h-5 w-5 text-indigo-600" />}
+                      {message.content.type === 'line' && <LineChart className="h-5 w-5 text-indigo-600" />}
+                      {message.content.type === 'pie' && <PieChart className="h-5 w-5 text-indigo-600" />}
+                      {message.content.type === 'report' && <FileText className="h-5 w-5 text-indigo-600" />}
+                      <h3 className="font-medium text-sm truncate">{message.content.title}</h3>
                     </div>
-                  </DialogContent>
-                </Dialog>
-                
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={() => setIsOpen(false)}
-                  className="h-6 w-6 text-white hover:bg-indigo-700 rounded-full p-0"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardHeader>
-            
-            <Tabs value={activeView} onValueChange={setActiveView}>
-              <TabsList className="w-full">
-                <TabsTrigger value="chat" className="flex-1">Chat</TabsTrigger>
-                <TabsTrigger value="report" className="flex-1" disabled={!temporaryReport}>
-                  Report {isGeneratingReport && <RefreshCw className="ml-1 h-3 w-3 animate-spin" />}
-                </TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="chat" className="m-0">
-                <ScrollArea className="h-72 overflow-y-auto">
-                  <CardContent className="p-4 space-y-4">
-                    {messages.map((message, index) => (
-                      <div 
-                        key={index} 
-                        className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
-                      >
-                        <div 
-                          className={`max-w-[85%] rounded-lg px-3 py-2 ${
-                            message.type === 'user' 
-                              ? 'bg-indigo-600 text-white' 
-                              : 'bg-gray-100 text-gray-800'
-                          }`}
-                        >
-                          <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                        </div>
-                      </div>
-                    ))}
-                    
-                    {isThinking && (
-                      <div className="flex justify-start">
-                        <div className="max-w-[85%] rounded-lg px-3 py-2 bg-gray-100 text-gray-800">
-                          <div className="flex items-center">
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            <p className="text-sm">Thinking...</p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                    <div ref={messagesEndRef} />
-                  </CardContent>
-                </ScrollArea>
-                
-                <CardFooter className="p-3 border-t">
-                  <div className="flex w-full gap-2">
-                    <Textarea 
-                      value={inputValue}
-                      onChange={(e) => setInputValue(e.target.value)}
-                      onKeyDown={handleKeyDown}
-                      placeholder="Ask something..."
-                      className="min-h-9 resize-none"
-                    />
-                    <Button 
-                      onClick={handleSend} 
-                      size="icon" 
-                      className="h-9 w-9 shrink-0"
-                      disabled={!inputValue.trim() || isThinking}
-                    >
-                      {isThinking ? 
-                        <Loader2 className="h-4 w-4 animate-spin" /> : 
-                        <SendIcon className="h-4 w-4" />
-                      }
-                    </Button>
+                    <div className="max-w-full overflow-hidden">
+                      <ChatDataVisualizer 
+                        type={message.content.type} 
+                        data={message.content.data} 
+                      />
+                    </div>
                   </div>
-                </CardFooter>
-              </TabsContent>
-              
-              <TabsContent value="report" className="m-0">
-                {temporaryReport && (
-                  <div className="space-y-3">
-                    <div className="px-4 pt-4">
-                      <h3 className="font-medium text-lg">{temporaryReport.title}</h3>
-                      <p className="text-gray-500 text-sm">{temporaryReport.description}</p>
-                      
-                      <div className="mt-3 flex items-center text-xs bg-blue-50 p-2 rounded-md text-blue-700">
-                        <Check className="h-3 w-3 mr-1 text-blue-600" />
-                        Generated with {aiSettings.model.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
-                      </div>
+                ) : (
+                  <div
+                    className={`flex items-start space-x-2 max-w-[85%] ${
+                      message.role === 'user' ? 'flex-row-reverse space-x-reverse' : 'flex-row'
+                    }`}
+                  >
+                    <div
+                      className={`p-1 rounded-full shrink-0 ${
+                        message.role === 'user' ? 'bg-indigo-100' : 'bg-gray-100'
+                      }`}
+                    >
+                      {message.role === 'user' ? (
+                        <User className="h-5 w-5 text-indigo-600" />
+                      ) : (
+                        <Bot className="h-5 w-5 text-gray-600" />
+                      )}
                     </div>
-                    
-                    <div className="h-56 px-3">
-                      <ResponsiveContainer width="100%" height="100%">
-                        {temporaryReport.chartType === 'pie' ? (
-                          <PieChart>
-                            <Pie
-                              data={temporaryReport.data}
-                              cx="50%"
-                              cy="50%"
-                              labelLine={false}
-                              label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                              outerRadius={70}
-                              fill="#8884d8"
-                              dataKey="value"
-                            >
-                              {temporaryReport.data.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                              ))}
-                            </Pie>
-                            <Tooltip />
-                          </PieChart>
-                        ) : (
-                          <RechartsBarChart
-                            data={temporaryReport.data}
-                            margin={{ top: 10, right: 10, left: 0, bottom: 10 }}
-                          >
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" />
-                            <YAxis />
-                            <Tooltip />
-                            <Legend />
-                            <Bar dataKey="ftds" name="Monthly FTDs" fill="#4F46E5" />
-                            <Bar dataKey="roi" name="ROI" fill="#06B6D4" />
-                            <Bar dataKey="churn" name="Churn %" fill="#EC4899" />
-                          </RechartsBarChart>
-                        )}
-                      </ResponsiveContainer>
+                    <div
+                      className={`p-3 rounded-lg break-words ${
+                        message.role === 'user'
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}
+                    >
+                      <div className="text-sm whitespace-pre-wrap break-words">{message.content}</div>
                     </div>
-                    
-                    <div className="px-4 space-y-3">
-                      <div>
-                        <h4 className="font-medium text-sm">Key Insights:</h4>
-                        <ul className="text-sm pl-5 mt-1 space-y-1 list-disc">
-                          {temporaryReport.insights.map((insight, index) => (
-                            <li key={index}>{insight}</li>
-                          ))}
-                        </ul>
-                      </div>
-                      
-                      <div>
-                        <h4 className="font-medium text-sm">Recommendations:</h4>
-                        <ul className="text-sm pl-5 mt-1 space-y-1 list-disc">
-                          {temporaryReport.recommendations.map((rec, index) => (
-                            <li key={index}>{rec}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-                    
-                    {audioError && (
-                      <Alert className="mx-4 bg-amber-50 border-amber-200">
-                        <AlertTriangle className="h-4 w-4 text-amber-600 mr-2" />
-                        <AlertDescription className="text-amber-800 text-xs">
-                          There was an issue with the audio playback. Please try again.
-                        </AlertDescription>
-                      </Alert>
-                    )}
-                    
-                    <div className="flex justify-between items-center px-4 py-3 border-t bg-gray-50">
-                      <div className="flex gap-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={toggleVoicePlayback}
-                          className="h-8"
-                          disabled={isPlaying && !audioRef.current}
-                        >
-                          {isPlaying ? (
-                            <>
-                              <Pause className="h-3 w-3 mr-1" />
-                              Pause
-                            </>
-                          ) : (
-                            <>
-                              <Volume2 className="h-3 w-3 mr-1" />
-                              Play Audio
-                            </>
-                          )}
-                        </Button>
-                        
-                        <Button variant="ghost" size="sm" className="h-8">
-                          <DownloadCloud className="h-3 w-3 mr-1" />
-                          Save
-                        </Button>
-                      </div>
-                      
-                      <div className="text-xs text-gray-500">
-                        Voice: {aiSettings.voice}
-                      </div>
-                      
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => setActiveView('chat')}
-                        className="h-8"
-                      >
-                        Back to Chat
-                      </Button>
-                    </div>
-                    
-                    {isPlaying && (
-                      <div className="px-4 pb-2">
-                        <div className="w-full bg-gray-200 rounded-full h-1.5">
-                          <div 
-                            className="bg-indigo-600 h-1.5 rounded-full transition-all duration-300" 
-                            style={{ width: `${audioProgress}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )}
-              </TabsContent>
-            </Tabs>
-          </Card>
-        )}
+              </div>
+            ))}
+            <div ref={messagesEndRef} />
+            
+            {isLoading && (
+              <div className="flex justify-center my-2">
+                <Loader2 className="h-5 w-5 animate-spin text-indigo-600" />
+              </div>
+            )}
+            
+            {error && (
+              <Alert variant="destructive" className="my-2">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+          </div>
+        </ScrollArea>
       </div>
-    </>
+      
+      <CardFooter className="p-3 pt-2 border-t shrink-0">
+        <div className="flex w-full items-center space-x-2">
+          <Textarea
+            placeholder="Type your message or ask for charts, tables, reports..."
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="flex-1 h-10 min-h-0 py-2 resize-none"
+            disabled={isLoading}
+          />
+          <Button
+            size="icon"
+            onClick={handleSendMessage}
+            disabled={!input.trim() || isLoading}
+            className="h-10 w-10 shrink-0 bg-indigo-600 hover:bg-indigo-700"
+          >
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
+      </CardFooter>
+    </Card>
   );
 }

@@ -1,17 +1,20 @@
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { User } from "@/api/entities";
 import { InvokeLLM } from "@/api/integrations";
-import { Brain, RefreshCw, Key, XCircle, Loader2, AlertTriangle, CheckCircle, Lock, FileText, Zap } from 'lucide-react';
-import { Badge } from "@/components/ui/badge";
+import { Brain, RefreshCw, Key, XCircle, Loader2, AlertTriangle, CheckCircle, Lock, FileText, Zap, BarChart3, Users, TrendingUp, SendIcon, Book, Settings, Upload } from 'lucide-react';
 import OpenAIConnectionCheck from '../components/ai/OpenAIConnectionCheck';
+import OpenAITraining from '../components/ai/OpenAITraining';
 
 export default function AIInsights() {
   const [activeTab, setActiveTab] = useState('question');
@@ -25,12 +28,13 @@ export default function AIInsights() {
   const [isGeneratingResponse, setIsGeneratingResponse] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
   const [apiStatus, setApiStatus] = useState(null);
-  
+  const [chatHistory, setChatHistory] = useState([]);
+
   useEffect(() => {
     fetchMetrics();
     checkApiKeyConfiguration();
   }, []);
-  
+
   const fetchMetrics = async () => {
     setIsLoading(true);
     try {
@@ -54,7 +58,7 @@ export default function AIInsights() {
       setIsLoading(false);
     }
   };
-  
+
   const checkApiKeyConfiguration = async () => {
     try {
       const user = await User.me();
@@ -91,12 +95,22 @@ export default function AIInsights() {
       setApiStatus("error");
     }
   };
-  
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleQuestionSubmit();
+    }
+  };
+
   const handleQuestionSubmit = async () => {
     if (!question.trim()) return;
     
     setIsGeneratingResponse(true);
     setErrorMessage(null);
+    
+    const newMessage = { type: 'user', content: question };
+    setChatHistory(prev => [...prev, newMessage]);
     
     try {
       console.log("Sending question to OpenAI:", question);
@@ -123,12 +137,13 @@ ${metrics ? `Available metrics if needed:
 - New Players: ${metrics.new_players.toLocaleString()} (${metrics.new_players_growth > 0 ? '+' : ''}${metrics.new_players_growth}%)
 - Conversion Rate: ${metrics.conversion_rate}% (${metrics.conversion_rate_growth > 0 ? '+' : ''}${metrics.conversion_rate_growth}%)` : ''}
 
+Previous conversation for context:
+${chatHistory.map(msg => `${msg.type === 'user' ? 'User' : 'Assistant'}: ${msg.content}`).join('\n')}
+
 Start your response with OPENAI-${uniqueRequestId}: and then provide your answer.
 Remember: Only answer what was asked, nothing more.`,
         add_context_from_internet: false
       });
-      
-      console.log("OpenAI response:", response);
       
       if (!response || typeof response !== 'string') {
         throw new Error("Invalid response from OpenAI");
@@ -139,7 +154,9 @@ Remember: Only answer what was asked, nothing more.`,
       }
       
       const cleanedResponse = response.replace(`OPENAI-${uniqueRequestId}: `, '');
-      setAnswer(cleanedResponse);
+      
+      setChatHistory(prev => [...prev, { type: 'assistant', content: cleanedResponse }]);
+      setQuestion('');
       
     } catch (error) {
       console.error("Error generating AI response:", error);
@@ -148,7 +165,74 @@ Remember: Only answer what was asked, nothing more.`,
       setIsGeneratingResponse(false);
     }
   };
-  
+
+  const handleGenerateInsights = async () => {
+    setIsGeneratingResponse(true);
+    setErrorMessage(null);
+    
+    try {
+      const response = await InvokeLLM({
+        prompt: `Analyze the following metrics and provide 3-5 key insights. Focus on trends, anomalies, and actionable recommendations:
+
+Metrics:
+- GGR: $${metrics.ggr.toLocaleString()} (${metrics.ggr_growth}% growth)
+- NGR: $${metrics.ngr.toLocaleString()} (${metrics.ngr_growth}% growth)
+- Active Players: ${metrics.active_players.toLocaleString()} (${metrics.active_players_growth}% growth)
+- New Players: ${metrics.new_players.toLocaleString()} (${metrics.new_players_growth}% growth)
+- Conversion Rate: ${metrics.conversion_rate}% (${metrics.conversion_rate_growth}% growth)
+
+Format your response as bullet points, with clear insights and specific recommendations.`,
+        add_context_from_internet: false
+      });
+
+      setChatHistory(prev => [...prev, 
+        { type: 'system', content: 'Generating automated insights...' },
+        { type: 'assistant', content: response }
+      ]);
+    } catch (error) {
+      setErrorMessage("Failed to generate insights: " + error.message);
+    } finally {
+      setIsGeneratingResponse(false);
+    }
+  };
+
+  const handleCreateReport = async () => {
+    setIsGeneratingResponse(true);
+    setErrorMessage(null);
+    
+    try {
+      const response = await InvokeLLM({
+        prompt: `Create a comprehensive iGaming performance report based on the following metrics:
+
+Metrics:
+- GGR: $${metrics.ggr.toLocaleString()} (${metrics.ggr_growth}% growth)
+- NGR: $${metrics.ngr.toLocaleString()} (${metrics.ngr_growth}% growth)
+- Active Players: ${metrics.active_players.toLocaleString()} (${metrics.active_players_growth}% growth)
+- New Players: ${metrics.new_players.toLocaleString()} (${metrics.new_players_growth}% growth)
+- Conversion Rate: ${metrics.conversion_rate}% (${metrics.conversion_rate_growth}% growth)
+
+Structure the report with:
+1. Executive Summary
+2. Key Performance Indicators
+3. Growth Analysis
+4. Areas of Concern
+5. Recommendations
+
+Format with clear headings and bullet points.`,
+        add_context_from_internet: false
+      });
+
+      setChatHistory(prev => [...prev, 
+        { type: 'system', content: 'Generating AI report...' },
+        { type: 'assistant', content: response }
+      ]);
+    } catch (error) {
+      setErrorMessage("Failed to generate report: " + error.message);
+    } finally {
+      setIsGeneratingResponse(false);
+    }
+  };
+
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -207,27 +291,66 @@ Remember: Only answer what was asked, nothing more.`,
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="mb-4">
             <TabsTrigger value="question">Ask a Question</TabsTrigger>
-            <TabsTrigger value="data">Data Insights</TabsTrigger>
+            <TabsTrigger value="train">Train AI</TabsTrigger>
+            <TabsTrigger value="data">Generate Insights</TabsTrigger>
             <TabsTrigger value="reports">AI Reports</TabsTrigger>
           </TabsList>
           
           <TabsContent value="question">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2">
-                <Card className="h-full">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              <div className="lg:col-span-8">
+                <Card>
                   <CardHeader>
-                    <CardTitle>Ask about your data</CardTitle>
+                    <CardTitle>Chat with AI Assistant</CardTitle>
                     <CardDescription>
-                      Use natural language to ask questions about your iGaming data
+                      Ask questions about your iGaming data
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <Textarea 
-                      placeholder="E.g., What's the trend in player retention over the last quarter?"
-                      value={question}
-                      onChange={(e) => setQuestion(e.target.value)}
-                      className="h-32"
-                    />
+                    <ScrollArea className="h-[400px] pr-4">
+                      {chatHistory.map((message, index) => (
+                        <div 
+                          key={index} 
+                          className={`mb-4 ${
+                            message.type === 'user' ? 'flex justify-end' : 'flex justify-start'
+                          }`}
+                        >
+                          <div 
+                            className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                              message.type === 'user' 
+                                ? 'bg-indigo-600 text-white' 
+                                : message.type === 'system'
+                                ? 'bg-gray-100 text-gray-600 italic'
+                                : 'bg-white border text-gray-800'
+                            }`}
+                          >
+                            <div className="whitespace-pre-wrap">{message.content}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </ScrollArea>
+                    
+                    <div className="flex gap-2">
+                      <Textarea 
+                        placeholder="Ask a question..."
+                        value={question}
+                        onChange={(e) => setQuestion(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        className="flex-1"
+                        rows={3}
+                      />
+                      <Button 
+                        onClick={handleQuestionSubmit}
+                        disabled={!question.trim() || isGeneratingResponse}
+                        className="self-end"
+                      >
+                        {isGeneratingResponse ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <SendIcon className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
                     
                     {errorMessage && (
                       <Alert variant="destructive">
@@ -235,107 +358,69 @@ Remember: Only answer what was asked, nothing more.`,
                         <AlertDescription>{errorMessage}</AlertDescription>
                       </Alert>
                     )}
-                    
-                    <Button 
-                      onClick={handleQuestionSubmit}
-                      disabled={!question.trim() || isGeneratingResponse || !isApiKeyConfigured}
-                      className="w-full"
-                    >
-                      {isGeneratingResponse ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Generating...
-                        </>
-                      ) : (
-                        <>
-                          <Brain className="h-4 w-4 mr-2" />
-                          Get Answer
-                        </>
-                      )}
-                    </Button>
-                    
-                    {!isApiKeyConfigured && (
-                      <Alert className="bg-blue-50 border-blue-200">
-                        <Key className="h-4 w-4 text-blue-600" />
-                        <AlertDescription className="text-blue-800">
-                          Please configure your OpenAI API key to use this feature.
-                        </AlertDescription>
-                      </Alert>
-                    )}
                   </CardContent>
                 </Card>
               </div>
               
-              <div>
-                <Card className="h-full">
+              <div className="lg:col-span-4">
+                <Card>
                   <CardHeader>
-                    <CardTitle>AI Response</CardTitle>
+                    <CardTitle>Quick Actions</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <ScrollArea className="h-[300px]">
-                      {answer ? (
-                        <div className="prose prose-sm">
-                          <div className="whitespace-pre-wrap">{answer}</div>
-                        </div>
-                      ) : (
-                        <div className="text-gray-500 text-center mt-4">
-                          {isGeneratingResponse ? (
-                            <div className="flex items-center justify-center">
-                              <Loader2 className="h-6 w-6 animate-spin text-indigo-600" />
-                              <span className="ml-2">Generating response...</span>
-                            </div>
-                          ) : (
-                            <>
-                              <Brain className="h-10 w-10 text-gray-300 mb-2 mx-auto" />
-                              <p>Ask a question to get AI insights</p>
-                            </>
-                          )}
-                        </div>
-                      )}
-                    </ScrollArea>
+                  <CardContent className="space-y-2">
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-start"
+                      onClick={() => setQuestion("What's our current GGR?")}
+                    >
+                      <BarChart3 className="mr-2 h-4 w-4" />
+                      Check GGR
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-start"
+                      onClick={() => setQuestion("How many active players do we have?")}
+                    >
+                      <Users className="mr-2 h-4 w-4" />
+                      Active Players
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-start"
+                      onClick={() => setQuestion("What's our conversion rate trend?")}
+                    >
+                      <TrendingUp className="mr-2 h-4 w-4" />
+                      Conversion Rate
+                    </Button>
                   </CardContent>
                 </Card>
               </div>
             </div>
           </TabsContent>
           
+          <TabsContent value="train">
+            <OpenAITraining />
+          </TabsContent>
+          
           <TabsContent value="data">
             <Card>
               <CardHeader>
-                <CardTitle>Data Insights</CardTitle>
-                <CardDescription>AI-generated insights from your data</CardDescription>
+                <CardTitle>Automated Insights</CardTitle>
+                <CardDescription>Generate AI-powered insights from your data</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center justify-center h-60">
-                  {isApiKeyConfigured ? (
-                    <div className="text-center">
-                      <FileText className="h-12 w-12 text-indigo-300 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium">Data Insights</h3>
-                      <p className="text-gray-500 mt-2 max-w-md">
-                        This feature will analyze your data and provide automatic insights.
-                      </p>
-                      <Button className="mt-4">
-                        <Zap className="h-4 w-4 mr-2" />
-                        Generate Insights
-                      </Button>
-                    </div>
+                <Button 
+                  onClick={handleGenerateInsights}
+                  disabled={isGeneratingResponse}
+                  className="w-full"
+                >
+                  {isGeneratingResponse ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
-                    <div className="text-center">
-                      <Lock className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium">API Key Required</h3>
-                      <p className="text-gray-500 mt-2">
-                        Please configure your OpenAI API key to use this feature.
-                      </p>
-                      <Button 
-                        onClick={() => setShowApiKeyConfig(true)} 
-                        className="mt-4"
-                      >
-                        <Key className="h-4 w-4 mr-2" />
-                        Configure API Key
-                      </Button>
-                    </div>
+                    <Brain className="mr-2 h-4 w-4" />
                   )}
-                </div>
+                  Generate Insights
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
@@ -344,39 +429,21 @@ Remember: Only answer what was asked, nothing more.`,
             <Card>
               <CardHeader>
                 <CardTitle>AI-Generated Reports</CardTitle>
-                <CardDescription>Create and manage AI-generated reports</CardDescription>
+                <CardDescription>Create comprehensive reports using AI</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center justify-center h-60">
-                  {isApiKeyConfigured ? (
-                    <div className="text-center">
-                      <FileText className="h-12 w-12 text-indigo-300 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium">AI Reports</h3>
-                      <p className="text-gray-500 mt-2 max-w-md">
-                        This feature will generate comprehensive reports based on your data.
-                      </p>
-                      <Button className="mt-4">
-                        <Zap className="h-4 w-4 mr-2" />
-                        Create New Report
-                      </Button>
-                    </div>
+                <Button 
+                  onClick={handleCreateReport}
+                  disabled={isGeneratingResponse}
+                  className="w-full"
+                >
+                  {isGeneratingResponse ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
-                    <div className="text-center">
-                      <Lock className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium">API Key Required</h3>
-                      <p className="text-gray-500 mt-2">
-                        Please configure your OpenAI API key to use this feature.
-                      </p>
-                      <Button 
-                        onClick={() => setShowApiKeyConfig(true)} 
-                        className="mt-4"
-                      >
-                        <Key className="h-4 w-4 mr-2" />
-                        Configure API Key
-                      </Button>
-                    </div>
+                    <FileText className="mr-2 h-4 w-4" />
                   )}
-                </div>
+                  Generate Report
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
