@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -445,135 +446,136 @@ export default function AlertsManagement() {
                       Muted Alerts
                     </TabsTrigger>
                   </TabsList>
-                </Tabs>
-              </CardHeader>
-              <CardContent>
-                <TabsContent value="active" className="mt-0">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Alert Name</TableHead>
-                        <TableHead>Metric</TableHead>
-                        <TableHead>Condition</TableHead>
-                        <TableHead>Severity</TableHead>
-                        <TableHead>Last Triggered</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {alertsData.active.map((alert) => (
-                        <TableRow 
-                          key={alert.id}
-                          className={`cursor-pointer ${selectedAlert?.id === alert.id ? 'bg-indigo-50' : ''}`}
-                          onClick={() => handleSelectAlert(alert)}
-                        >
-                          <TableCell className="font-medium">
-                            <div className="flex items-center gap-1">
-                              <span>{alert.name}</span>
-                              {alert.enabled ? (
-                                <Badge variant="outline" className="ml-2 bg-green-50 text-green-700 border-green-200">
-                                  Active
-                                </Badge>
-                              ) : (
-                                <Badge variant="outline" className="ml-2 bg-gray-50 text-gray-700 border-gray-200">
-                                  Paused
-                                </Badge>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>{alert.metric.replace('_', ' ')}</TableCell>
-                          <TableCell>
-                            {alert.condition} {alert.threshold}
-                          </TableCell>
-                          <TableCell>{renderSeverityBadge(alert.severity)}</TableCell>
-                          <TableCell>{formatDate(alert.lastTriggered)}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              {alert.lastTriggered ? (
-                                <Badge className="bg-yellow-100 text-yellow-800">
-                                  Triggered
-                                </Badge>
-                              ) : (
-                                <Badge className="bg-green-100 text-green-800">
-                                  Normal
-                                </Badge>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TabsContent>
-                
-                <TabsContent value="history" className="mt-0">
-                  <ScrollArea className="h-[400px]">
+                  <TabsContent value="active" className="mt-0">
                     <Table>
                       <TableHeader>
                         <TableRow>
                           <TableHead>Alert Name</TableHead>
-                          <TableHead>Triggered At</TableHead>
-                          <TableHead>Value</TableHead>
+                          <TableHead>Metric</TableHead>
+                          <TableHead>Condition</TableHead>
+                          <TableHead>Severity</TableHead>
+                          <TableHead>Last Triggered</TableHead>
                           <TableHead>Status</TableHead>
-                          <TableHead>Resolved At</TableHead>
-                          <TableHead>Notes</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {alertsData.history.map((event) => (
-                          <TableRow key={event.id}>
-                            <TableCell className="font-medium">{event.alertName}</TableCell>
-                            <TableCell>{formatDate(event.triggeredAt)}</TableCell>
-                            <TableCell>
-                              {event.value} 
-                              <span className="text-xs text-gray-500 ml-1">
-                                ({event.condition} {event.threshold})
-                              </span>
+                        {alertsData.active.map((alert) => (
+                          <TableRow 
+                            key={alert.id}
+                            className={`cursor-pointer ${selectedAlert?.id === alert.id ? 'bg-indigo-50' : ''}`}
+                            onClick={() => handleSelectAlert(alert)}
+                          >
+                            <TableCell className="font-medium">
+                              <div className="flex items-center gap-1">
+                                <span>{alert.name}</span>
+                                {alert.enabled ? (
+                                  <Badge variant="outline" className="ml-2 bg-green-50 text-green-700 border-green-200">
+                                    Active
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="ml-2 bg-gray-50 text-gray-700 border-gray-200">
+                                    Paused
+                                  </Badge>
+                                )}
+                              </div>
                             </TableCell>
-                            <TableCell>{renderStatusBadge(event.status)}</TableCell>
-                            <TableCell>{formatDate(event.resolvedAt)}</TableCell>
-                            <TableCell className="max-w-xs truncate" title={event.notes}>
-                              {event.notes}
+                            <TableCell>{alert.metric.replace('_', ' ')}</TableCell>
+                            <TableCell>
+                              {alert.condition} {alert.threshold}
+                            </TableCell>
+                            <TableCell>{renderSeverityBadge(alert.severity)}</TableCell>
+                            <TableCell>{formatDate(alert.lastTriggered)}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                {alert.lastTriggered ? (
+                                  <Badge className="bg-yellow-100 text-yellow-800">
+                                    Triggered
+                                  </Badge>
+                                ) : (
+                                  <Badge className="bg-green-100 text-green-800">
+                                    Normal
+                                  </Badge>
+                                )}
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
                     </Table>
-                  </ScrollArea>
-                </TabsContent>
-                
-                <TabsContent value="muted" className="mt-0">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Alert Name</TableHead>
-                        <TableHead>Metric</TableHead>
-                        <TableHead>Condition</TableHead>
-                        <TableHead>Severity</TableHead>
-                        <TableHead>Muted Until</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {alertsData.muted.map((alert) => (
-                        <TableRow key={alert.id}>
-                          <TableCell className="font-medium">{alert.name}</TableCell>
-                          <TableCell>{alert.metric.replace('_', ' ')}</TableCell>
-                          <TableCell>
-                            {alert.condition} {alert.threshold}
-                          </TableCell>
-                          <TableCell>{renderSeverityBadge(alert.severity)}</TableCell>
-                          <TableCell>{formatDate(alert.mutedUntil)}</TableCell>
-                          <TableCell>
-                            <Button variant="outline" size="sm">
-                              Unmute
-                            </Button>
-                          </TableCell>
+                  </TabsContent>
+                  
+                  <TabsContent value="history" className="mt-0">
+                    <ScrollArea className="h-[400px]">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Alert Name</TableHead>
+                            <TableHead>Triggered At</TableHead>
+                            <TableHead>Value</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Resolved At</TableHead>
+                            <TableHead>Notes</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {alertsData.history.map((event) => (
+                            <TableRow key={event.id}>
+                              <TableCell className="font-medium">{event.alertName}</TableCell>
+                              <TableCell>{formatDate(event.triggeredAt)}</TableCell>
+                              <TableCell>
+                                {event.value} 
+                                <span className="text-xs text-gray-500 ml-1">
+                                  ({event.condition} {event.threshold})
+                                </span>
+                              </TableCell>
+                              <TableCell>{renderStatusBadge(event.status)}</TableCell>
+                              <TableCell>{formatDate(event.resolvedAt)}</TableCell>
+                              <TableCell className="max-w-xs truncate" title={event.notes}>
+                                {event.notes}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </ScrollArea>
+                  </TabsContent>
+                  
+                  <TabsContent value="muted" className="mt-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Alert Name</TableHead>
+                          <TableHead>Metric</TableHead>
+                          <TableHead>Condition</TableHead>
+                          <TableHead>Severity</TableHead>
+                          <TableHead>Muted Until</TableHead>
+                          <TableHead>Actions</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TabsContent>
+                      </TableHeader>
+                      <TableBody>
+                        {alertsData.muted.map((alert) => (
+                          <TableRow key={alert.id}>
+                            <TableCell className="font-medium">{alert.name}</TableCell>
+                            <TableCell>{alert.metric.replace('_', ' ')}</TableCell>
+                            <TableCell>
+                              {alert.condition} {alert.threshold}
+                            </TableCell>
+                            <TableCell>{renderSeverityBadge(alert.severity)}</TableCell>
+                            <TableCell>{formatDate(alert.mutedUntil)}</TableCell>
+                            <TableCell>
+                              <Button variant="outline" size="sm">
+                                Unmute
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TabsContent>
+                </Tabs>
+              </CardHeader>
+              <CardContent>
+                {/* Keep any content here that's outside of TabsContent */}
               </CardContent>
             </Card>
             

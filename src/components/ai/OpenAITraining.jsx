@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -36,13 +37,14 @@ export default function OpenAITraining() {
     terms: '',
     trainingData: ''
   });
-  const [isAutoAnalyzeEnabled, setIsAutoAnalyzeEnabled] = useState(true);
+  const [isAutoAnalyzeEnabled, setIsAutoAnalyzeEnabled] = useState(false);
   const [lastSaved, setLastSaved] = useState(null);
   const [validation, setValidation] = useState({
     guidelines: { status: 'pending', feedback: '' },
     terms: { status: 'pending', feedback: '' },
     trainingData: { status: 'pending', feedback: '' }
   });
+  const [validationInProgress, setValidationInProgress] = useState(false);
 
   useEffect(() => {
     fetchExistingData();
@@ -100,6 +102,13 @@ export default function OpenAITraining() {
   };
 
   const validateSection = async (section) => {
+    if (validationInProgress) {
+      setMessage("Another validation is in progress. Please wait a moment before trying again.");
+      setMessageType("error");
+      return;
+    }
+
+    setValidationInProgress(true);
     setValidation(prev => ({ 
       ...prev, 
       [section]: { status: 'validating', feedback: '' }
@@ -115,47 +124,38 @@ export default function OpenAITraining() {
             feedback: 'Content is too short. Please provide more detailed information.' 
           }
         }));
+        setValidationInProgress(false);
         return;
       }
 
-      // Get validation and suggestions from OpenAI
-      const response = await InvokeLLM({
-        prompt: `You are an AI training expert. Review the following ${section} content that will be used to train an AI assistant for an iGaming analytics platform:
+      const trimmedContent = content.length > 1500 ? 
+        content.substring(0, 1500) + "... [content truncated for analysis]" : 
+        content;
 
----BEGIN CONTENT---
-${content}
----END CONTENT---
-
-Analyze the quality and effectiveness of this content for training an AI. Provide your assessment in the following JSON format:
-{
-  "valid": true/false,
-  "score": 1-10,
-  "feedback": "Your detailed feedback",
-  "suggestions": ["Suggestion 1", "Suggestion 2", "..."]
-}
-
-Focus on clarity, specificity, completeness, and whether it provides clear instructions for how the AI should respond and handle analytics queries.`,
-        response_json_schema: {
-          type: "object",
-          properties: {
-            valid: { type: "boolean" },
-            score: { type: "number" },
-            feedback: { type: "string" },
-            suggestions: { type: "array", items: { type: "string" } }
+      try {
+        const response = await validateWithRetry(section, trimmedContent, 3);
+        
+        setValidation(prev => ({ 
+          ...prev, 
+          [section]: { 
+            status: response.valid ? 'valid' : 'invalid',
+            feedback: response.feedback,
+            score: response.score,
+            suggestions: response.suggestions
           }
-        },
-        add_context_from_internet: false
-      });
-
-      setValidation(prev => ({ 
-        ...prev, 
-        [section]: { 
-          status: response.valid ? 'valid' : 'invalid',
-          feedback: response.feedback,
-          score: response.score,
-          suggestions: response.suggestions
-        }
-      }));
+        }));
+      } catch (error) {
+        console.error(`Error validating ${section} after retries:`, error);
+        setValidation(prev => ({ 
+          ...prev, 
+          [section]: { 
+            status: 'error', 
+            feedback: `Rate limit exceeded. Please try again in a few minutes.` 
+          }
+        }));
+        setMessage("OpenAI API rate limit reached. Please try validation again in a few minutes.");
+        setMessageType("error");
+      }
     } catch (error) {
       console.error(`Error validating ${section}:`, error);
       setValidation(prev => ({ 
@@ -165,7 +165,56 @@ Focus on clarity, specificity, completeness, and whether it provides clear instr
           feedback: `Error during validation: ${error.message}` 
         }
       }));
+    } finally {
+      setValidationInProgress(false);
     }
+  };
+
+  const validateWithRetry = async (section, content, maxRetries) => {
+    let retries = 0;
+    while (retries < maxRetries) {
+      try {
+        const response = await InvokeLLM({
+          prompt: `You are an AI training expert. Review the following ${section} content that will be used to train an AI assistant for an iGaming analytics platform:
+
+---BEGIN CONTENT---
+${content}
+---END CONTENT---
+
+Analyze the quality and effectiveness of this content for training an AI. Keep your response concise.
+Provide your assessment in the following JSON format:
+{
+  "valid": true/false,
+  "score": 1-10,
+  "feedback": "Your concise feedback (max 100 words)",
+  "suggestions": ["Short suggestion 1", "Short suggestion 2", "Short suggestion 3"]
+}`,
+          response_json_schema: {
+            type: "object",
+            properties: {
+              valid: { type: "boolean" },
+              score: { type: "number" },
+              feedback: { type: "string" },
+              suggestions: { type: "array", items: { type: "string" } }
+            }
+          },
+          add_context_from_internet: false
+        });
+        
+        return response;
+      } catch (error) {
+        retries++;
+        console.warn(`Validation attempt ${retries} failed. ${maxRetries - retries} retries left.`);
+        
+        if (error.message && error.message.includes("429")) {
+          await new Promise(resolve => setTimeout(resolve, 3000 * retries));
+        } else if (retries >= maxRetries) {
+          throw error;
+        }
+      }
+    }
+    
+    throw new Error("Maximum retries exceeded");
   };
 
   const getDefaultGuidelines = () => {
@@ -351,10 +400,10 @@ When asked "Show me GGR trends":
                   value={trainingData.guidelines}
                   onChange={(e) => {
                     setTrainingData(prev => ({ ...prev, guidelines: e.target.value }));
-                    if (isAutoAnalyzeEnabled && e.target.value.length > 100) {
+                    if (isAutoAnalyzeEnabled && e.target.value.length > 100 && !validationInProgress) {
                       const debounce = setTimeout(() => {
                         validateSection('guidelines');
-                      }, 2000);
+                      }, 5000);
                       return () => clearTimeout(debounce);
                     }
                   }}
@@ -390,7 +439,7 @@ When asked "Show me GGR trends":
                 </Button>
                 <Button 
                   onClick={() => validateSection('guidelines')}
-                  disabled={validation.guidelines.status === 'validating'}
+                  disabled={validation.guidelines.status === 'validating' || validationInProgress}
                 >
                   {validation.guidelines.status === 'validating' ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -416,10 +465,10 @@ When asked "Show me GGR trends":
                   value={trainingData.terms}
                   onChange={(e) => {
                     setTrainingData(prev => ({ ...prev, terms: e.target.value }));
-                    if (isAutoAnalyzeEnabled && e.target.value.length > 100) {
+                    if (isAutoAnalyzeEnabled && e.target.value.length > 100 && !validationInProgress) {
                       const debounce = setTimeout(() => {
                         validateSection('terms');
-                      }, 2000);
+                      }, 5000);
                       return () => clearTimeout(debounce);
                     }
                   }}
@@ -455,7 +504,7 @@ When asked "Show me GGR trends":
                 </Button>
                 <Button 
                   onClick={() => validateSection('terms')}
-                  disabled={validation.terms.status === 'validating'}
+                  disabled={validation.terms.status === 'validating' || validationInProgress}
                 >
                   {validation.terms.status === 'validating' ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -490,10 +539,10 @@ When asked "Show me GGR trends":
                   value={trainingData.trainingData}
                   onChange={(e) => {
                     setTrainingData(prev => ({ ...prev, trainingData: e.target.value }));
-                    if (isAutoAnalyzeEnabled && e.target.value.length > 100) {
+                    if (isAutoAnalyzeEnabled && e.target.value.length > 100 && !validationInProgress) {
                       const debounce = setTimeout(() => {
                         validateSection('trainingData');
-                      }, 2000);
+                      }, 5000);
                       return () => clearTimeout(debounce);
                     }
                   }}
@@ -572,7 +621,7 @@ I recommend setting up a retention dashboard that tracks these metrics across pl
                 </Button>
                 <Button 
                   onClick={() => validateSection('trainingData')}
-                  disabled={validation.trainingData.status === 'validating'}
+                  disabled={validation.trainingData.status === 'validating' || validationInProgress}
                 >
                   {validation.trainingData.status === 'validating' ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

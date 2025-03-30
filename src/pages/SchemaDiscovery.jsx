@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -17,7 +18,6 @@ export default function SchemaDiscovery() {
   const [copied, setCopied] = useState(false);
   const [expandedTable, setExpandedTable] = useState(null);
   
-  // This is our database schema that represents the actual schema in the database
   const databaseSchema = {
     players: {
       description: "Player accounts and demographic information",
@@ -507,7 +507,6 @@ export default function SchemaDiscovery() {
     }
   };
 
-  // Process the schema for flat table and column list
   const [flatColumns, flatTables] = React.useMemo(() => {
     let allColumns = [];
     let allTables = [];
@@ -562,7 +561,141 @@ export default function SchemaDiscovery() {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
-  
+
+  const exportSchema = () => {
+    const exportData = {
+      version: "1.0",
+      exported_at: new Date().toISOString(),
+      database_name: "iGaming Analytics Platform",
+      domains: {}
+    };
+
+    Object.entries(databaseSchema).forEach(([domain, domainData]) => {
+      exportData.domains[domain] = {
+        description: domainData.description,
+        tables: domainData.tables.map(table => ({
+          name: table.name,
+          description: table.description,
+          primary_key: table.primary_key,
+          columns: table.columns.map(column => ({
+            name: column.name,
+            type: column.type,
+            description: column.description,
+            nullable: column.nullable,
+            is_primary_key: table.primary_key === column.name,
+            constraints: deriveConstraints(column)
+          })),
+          indexes: deriveIndexes(table),
+          relationships: deriveRelationships(table, domain)
+        }))
+      };
+    });
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `database-schema-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  };
+
+  const deriveConstraints = (column) => {
+    const constraints = [];
+    
+    if (!column.nullable) {
+      constraints.push("NOT NULL");
+    }
+
+    if (column.type.includes('varchar')) {
+      const match = column.type.match(/varchar\((\d+)\)/);
+      if (match) {
+        constraints.push(`MAX LENGTH(${match[1]})`);
+      }
+    }
+
+    if (column.type === 'date' || column.type === 'timestamp') {
+      constraints.push("TEMPORAL");
+    }
+
+    if (column.name.endsWith('_id') && column.name !== 'id') {
+      const referencedTable = column.name.replace('_id', '');
+      constraints.push(`FOREIGN KEY REFERENCE(${referencedTable}.id)`);
+    }
+
+    return constraints;
+  };
+
+  const deriveIndexes = (table) => {
+    const indexes = [];
+    
+    indexes.push({
+      name: `pk_${table.name}`,
+      type: "PRIMARY KEY",
+      columns: [table.primary_key],
+      unique: true
+    });
+
+    table.columns.forEach(column => {
+      if (column.name.endsWith('_id') && column.name !== table.primary_key) {
+        indexes.push({
+          name: `idx_${table.name}_${column.name}`,
+          type: "BTREE",
+          columns: [column.name],
+          unique: false
+        });
+      }
+
+      if (['status', 'type', 'date', 'created_date'].includes(column.name)) {
+        indexes.push({
+          name: `idx_${table.name}_${column.name}`,
+          type: "BTREE",
+          columns: [column.name],
+          unique: false
+        });
+      }
+    });
+
+    return indexes;
+  };
+
+  const deriveRelationships = (table, currentDomain) => {
+    const relationships = [];
+
+    table.columns.forEach(column => {
+      if (column.name.endsWith('_id') && column.name !== 'id') {
+        const referencedTable = column.name.replace('_id', '');
+        
+        let referencedDomain = null;
+        Object.entries(databaseSchema).forEach(([domain, domainData]) => {
+          if (domainData.tables.some(t => t.name === referencedTable)) {
+            referencedDomain = domain;
+          }
+        });
+
+        if (referencedDomain) {
+          relationships.push({
+            type: "FOREIGN KEY",
+            from: {
+              domain: currentDomain,
+              table: table.name,
+              column: column.name
+            },
+            to: {
+              domain: referencedDomain,
+              table: referencedTable,
+              column: 'id'
+            }
+          });
+        }
+      }
+    });
+
+    return relationships;
+  };
+
   const handleTableClick = (tableName) => {
     if (expandedTable === tableName) {
       setExpandedTable(null);
@@ -603,7 +736,7 @@ export default function SchemaDiscovery() {
               {copied ? "Copied!" : "Copy Schema"}
             </Button>
             
-            <Button>
+            <Button onClick={exportSchema}>
               <DownloadCloud className="h-4 w-4 mr-2" />
               Export Schema
             </Button>

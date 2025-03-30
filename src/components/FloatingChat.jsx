@@ -4,335 +4,440 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { AlertTriangle, Bot, Loader2, Maximize2, Minimize2, Send, User, X, BookOpen, BarChart3, LineChart, FileText, PieChart } from 'lucide-react';
+import { AlertTriangle, Bot, Loader2, X, User, Send, BarChart2, PieChart as PieChartIcon, TrendingUp } from 'lucide-react';
 import { InvokeLLM } from "@/api/integrations";
-import { User as UserEntity } from "@/api/entities";
+import { MetricsData } from "@/api/entities";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import ChatDataVisualizer from './chat/ChatDataVisualizer';
+import { ResponsiveContainer, AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart, Pie, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell } from 'recharts';
+
+const COLORS = ['#4F46E5', '#06B6D4', '#F59E0B', '#EC4899', '#10B981'];
 
 export default function FloatingChat() {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState([
-    { role: 'assistant', content: 'Hello! I\'m your iGaming Analytics Assistant. How can I help you? Ask me to show data in charts or tables.', type: 'text' }
-  ]);
-  const [input, setInput] = useState('');
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [isApiConfigured, setIsApiConfigured] = useState(true);
-  const [userTrainingLoaded, setUserTrainingLoaded] = useState(false);
+  const [chatHistory, setChatHistory] = useState([]);
+  const [question, setQuestion] = useState('');
+  const [isGeneratingResponse, setIsGeneratingResponse] = useState(false);
+  const [errorMessage, setErrorMessage] = useState(null);
+  const [metricsData, setMetricsData] = useState([]);
+  const [chartMode, setChartMode] = useState(null); // 'line', 'bar', 'pie', or null
   const messagesEndRef = useRef(null);
-  
+
   useEffect(() => {
-    const checkApiKey = async () => {
-      try {
-        const user = await UserEntity.me();
-        if (user && user.openai_api_key) {
-          setIsApiConfigured(true);
-          if (user.ai_terms || user.ai_guidelines || user.ai_training_data) {
-            setUserTrainingLoaded(true);
-          }
-        }
-      } catch (error) {
-        console.error("Error checking API key:", error);
-      }
-    };
-    
-    checkApiKey();
-  }, []);
+    if (isOpen) {
+      loadMetricsData();
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages]);
+  }, [chatHistory]);
 
-  const detectChartType = (text) => {
-    const lowerText = text.toLowerCase();
-    if (lowerText.includes('pie chart') || lowerText.includes('distribution') || lowerText.includes('breakdown')) {
-      return 'pie';
-    } else if (lowerText.includes('line chart') || lowerText.includes('trend') || lowerText.includes('over time') || lowerText.includes('historical')) {
-      return 'line';
-    } else if (lowerText.includes('bar chart') || lowerText.includes('comparison') || lowerText.includes('compare')) {
-      return 'chart';
+  const loadMetricsData = async () => {
+    try {
+      const data = await MetricsData.list('-date', 100); // Get last 100 records
+      setMetricsData(data);
+    } catch (error) {
+      console.error("Error loading metrics data:", error);
+      setErrorMessage("Failed to load metrics data");
     }
-    return 'chart';
   };
 
-  const detectVisualizationType = (text) => {
-    const lowerText = text.toLowerCase();
-    if (
-      lowerText.includes('chart') || 
-      lowerText.includes('graph') || 
-      lowerText.includes('plot') || 
-      lowerText.includes('visualize') || 
-      lowerText.includes('visualization')
-    ) {
-      return detectChartType(text);
-    }
-    
-    if (
-      lowerText.includes('table') || 
-      lowerText.includes('tabulate') || 
-      lowerText.includes('grid')
-    ) {
-      return 'table';
-    }
-    
-    if (
-      lowerText.includes('report') || 
-      lowerText.includes('summary') || 
-      lowerText.includes('overview')
-    ) {
-      return 'report';
-    }
-    
-    return null;
+  const prepareMetricsData = (rawData) => {
+    if (!rawData || !rawData.length) return null;
+
+    return {
+      daily: {
+        ggr: rawData.slice(0, 7).reverse().map(d => ({
+          x: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          y: Math.round(d.ggr || 0)
+        })),
+        ngr: rawData.slice(0, 7).reverse().map(d => ({
+          x: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          y: Math.round(d.ngr || 0)
+        })),
+        active_players: rawData.slice(0, 7).reverse().map(d => ({
+          x: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          y: d.active_players || 0
+        }))
+      },
+      monthly: {
+        deposits: aggregateMonthlyData(rawData, 'deposit_amount_cents'),
+        ftd: aggregateMonthlyData(rawData, 'first_deposit_amount_cents'),
+        players: aggregateMonthlyData(rawData, 'active_players')
+      },
+      distributions: {
+        game_categories: aggregateByField(rawData, 'game_category'),
+        countries: aggregateByField(rawData, 'country'),
+        payment_methods: aggregateByField(rawData, 'payment_method'),
+        platforms: aggregateByField(rawData, 'platform')
+      },
+      affiliates: aggregateAffiliateData(rawData)
+    };
   };
 
-  const generateMockDataForVisualization = (type, query) => {
-    const lowerQuery = query.toLowerCase();
-    if (type === 'chart' || type === 'bar') {
-      if (lowerQuery.includes('game') || lowerQuery.includes('casino') || lowerQuery.includes('category')) {
-        return [
-          { category: 'Slots', value: 42500 },
-          { category: 'Table Games', value: 28350 },
-          { category: 'Live Casino', value: 37800 },
-          { category: 'Sports', value: 19500 },
-          { category: 'Poker', value: 15200 }
-        ];
-      } else if (lowerQuery.includes('country') || lowerQuery.includes('geo') || lowerQuery.includes('region')) {
-        return [
-          { category: 'UK', value: 35400 },
-          { category: 'Germany', value: 29300 },
-          { category: 'Sweden', value: 25600 },
-          { category: 'Denmark', value: 18900 },
-          { category: 'Finland', value: 15700 }
-        ];
-      } else if (lowerQuery.includes('deposit') || lowerQuery.includes('payment')) {
-        return [
-          { category: 'Credit Card', value: 38500 },
-          { category: 'e-Wallets', value: 32700 },
-          { category: 'Bank Transfer', value: 24300 },
-          { category: 'Crypto', value: 18600 },
-          { category: 'Other', value: 9800 }
-        ];
-      } else {
-        return [
-          { category: 'Slots', value: 42500 },
-          { category: 'Table Games', value: 28350 },
-          { category: 'Live Casino', value: 37800 },
-          { category: 'Sports', value: 19500 },
-          { category: 'Poker', value: 15200 }
-        ];
-      }
-    } else if (type === 'pie') {
-      if (lowerQuery.includes('game') || lowerQuery.includes('casino') || lowerQuery.includes('category')) {
-        return [
-          { name: 'Slots', value: 42 },
-          { name: 'Table Games', value: 28 },
-          { name: 'Live Casino', value: 38 },
-          { name: 'Sports', value: 20 },
-          { name: 'Poker', value: 15 }
-        ];
-      } else if (lowerQuery.includes('device') || lowerQuery.includes('platform')) {
-        return [
-          { name: 'Mobile', value: 65 },
-          { name: 'Desktop', value: 30 },
-          { name: 'Tablet', value: 5 }
-        ];
-      } else if (lowerQuery.includes('deposit') || lowerQuery.includes('payment')) {
-        return [
-          { name: 'Credit Card', value: 38 },
-          { name: 'e-Wallets', value: 33 },
-          { name: 'Bank Transfer', value: 24 },
-          { name: 'Crypto', value: 19 },
-          { name: 'Other', value: 10 }
-        ];
-      } else {
-        return [
-          { name: 'Casual', value: 45 },
-          { name: 'Regular', value: 30 },
-          { name: 'VIP', value: 15 },
-          { name: 'Inactive', value: 10 }
-        ];
-      }
-    } else if (type === 'line') {
-      if (lowerQuery.includes('ggr') || lowerQuery.includes('revenue') || lowerQuery.includes('income')) {
-        return [
-          { date: 'Jan', ggr: 32000, ngr: 24000 },
-          { date: 'Feb', ggr: 35800, ngr: 27500 },
-          { date: 'Mar', ggr: 40200, ngr: 31800 },
-          { date: 'Apr', ggr: 38500, ngr: 29700 },
-          { date: 'May', ggr: 42100, ngr: 33600 },
-          { date: 'Jun', ggr: 45800, ngr: 36400 }
-        ];
-      } else if (lowerQuery.includes('player') || lowerQuery.includes('user')) {
-        return [
-          { date: 'Jan', active: 3200, new: 840 },
-          { date: 'Feb', active: 3580, new: 920 },
-          { date: 'Mar', active: 4020, new: 1050 },
-          { date: 'Apr', active: 3850, new: 980 },
-          { date: 'May', active: 4210, new: 1120 },
-          { date: 'Jun', active: 4580, new: 1240 }
-        ];
-      } else if (lowerQuery.includes('conversion') || lowerQuery.includes('retention')) {
-        return [
-          { date: 'Jan', conversion: 22.4, retention: 42.5 },
-          { date: 'Feb', conversion: 23.8, retention: 43.2 },
-          { date: 'Mar', conversion: 25.1, retention: 45.8 },
-          { date: 'Apr', conversion: 24.5, retention: 44.3 },
-          { date: 'May', conversion: 26.2, retention: 46.5 },
-          { date: 'Jun', conversion: 27.1, retention: 48.2 }
-        ];
-      } else {
-        return [
-          { date: 'Jan', ggr: 32000, ngr: 24000, deposits: 48000 },
-          { date: 'Feb', ggr: 35800, ngr: 27500, deposits: 52000 },
-          { date: 'Mar', ggr: 40200, ngr: 31800, deposits: 58000 },
-          { date: 'Apr', ggr: 38500, ngr: 29700, deposits: 54000 },
-          { date: 'May', ggr: 42100, ngr: 33600, deposits: 60000 },
-          { date: 'Jun', ggr: 45800, ngr: 36400, deposits: 65000 }
-        ];
-      }
-    } else if (type === 'table') {
-      if (lowerQuery.includes('metrics') || lowerQuery.includes('kpi') || lowerQuery.includes('overview')) {
-        return [
-          { metric: 'GGR', value: '$124,500', change: '+12.5%' },
-          { metric: 'NGR', value: '$98,700', change: '+8.2%' },
-          { metric: 'Active Players', value: '4,278', change: '+5.8%' },
-          { metric: 'New Sign-ups', value: '843', change: '+2.1%' },
-          { metric: 'Conversion Rate', value: '22.5%', change: '-0.8%' }
-        ];
-      } else if (lowerQuery.includes('affiliate') || lowerQuery.includes('marketing')) {
-        return [
-          { affiliate: 'Affiliate A', players: 845, revenue: '$28,500', cpa: '$35' },
-          { affiliate: 'Affiliate B', players: 620, revenue: '$19,800', cpa: '$32' },
-          { affiliate: 'Affiliate C', players: 540, revenue: '$16,200', cpa: '$30' },
-          { affiliate: 'Affiliate D', players: 380, revenue: '$12,500', cpa: '$33' },
-          { affiliate: 'Affiliate E', players: 320, revenue: '$9,800', cpa: '$31' }
-        ];
-      } else if (lowerQuery.includes('game') || lowerQuery.includes('popular')) {
-        return [
-          { game: 'Book of Dead', provider: 'Play\'n GO', spins: '124,500', ggr: '$18,700' },
-          { game: 'Starburst', provider: 'NetEnt', spins: '98,700', ggr: '$15,200' },
-          { game: 'Gonzo\'s Quest', provider: 'NetEnt', spins: '85,200', ggr: '$13,800' },
-          { game: 'Sweet Bonanza', provider: 'Pragmatic', spins: '76,500', ggr: '$12,300' },
-          { game: 'Wolf Gold', provider: 'Pragmatic', spins: '68,900', ggr: '$10,500' }
-        ];
-      } else {
-        return [
-          { metric: 'GGR', value: '$124,500', change: '+12.5%' },
-          { metric: 'NGR', value: '$98,700', change: '+8.2%' },
-          { metric: 'Active Players', value: '4,278', change: '+5.8%' },
-          { metric: 'New Sign-ups', value: '843', change: '+2.1%' },
-          { metric: 'Conversion Rate', value: '22.5%', change: '-0.8%' }
-        ];
-      }
-    } else if (type === 'report') {
-      return [
-        { 
-          title: 'Revenue Overview', 
-          subtitle: 'Last 30 days performance',
-          content: 'GGR reached $124,500 with a 12.5% increase over the previous period. Slots remain the most popular game category contributing 38% of total GGR.'
-        },
-        {
-          title: 'Player Activity',
-          content: 'Active players increased by 5.8% to 4,278. Player retention rate is at 42% which is above industry average.'
-        },
-        {
-          title: 'Recommendations',
-          content: '1. Increase marketing for live casino games which show the highest ROI\n2. Review table games which are showing lower engagement\n3. Target churn risk players with personalized offers'
-        }
-      ];
-    }
+  const aggregateMonthlyData = (data, field) => {
+    const monthlyGroups = {};
     
-    return [];
+    data.forEach(record => {
+      const date = new Date(record.date);
+      const monthKey = date.toLocaleDateString('en-US', { month: 'short' });
+      
+      if (!monthlyGroups[monthKey]) {
+        monthlyGroups[monthKey] = 0;
+      }
+      monthlyGroups[monthKey] += (record[field] || 0);
+    });
+
+    return Object.entries(monthlyGroups)
+      .map(([month, value]) => ({
+        x: month,
+        y: Math.round(value)
+      }))
+      .slice(-3); // Last 3 months
   };
 
-  const handleSendMessage = async () => {
-    if (!input.trim()) return;
+  const aggregateByField = (data, field) => {
+    const groups = {};
     
-    const userMessage = { role: 'user', content: input, type: 'text' };
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
-    setIsLoading(true);
-    setError(null);
+    data.forEach(record => {
+      const value = record[field] || 'Other';
+      if (!groups[value]) {
+        groups[value] = 0;
+      }
+      groups[value]++;
+    });
+
+    return Object.entries(groups)
+      .map(([name, value]) => ({
+        name,
+        value: (value / data.length * 100).toFixed(1)
+      }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5); // Top 5
+  };
+
+  const aggregateAffiliateData = (data) => {
+    const affiliateMap = new Map();
+    
+    data.forEach(record => {
+      if (!record.affiliate_name) return;
+      
+      if (!affiliateMap.has(record.affiliate_name)) {
+        affiliateMap.set(record.affiliate_name, {
+          name: record.affiliate_name,
+          ftds: 0,
+          revenue: 0,
+          active_players: 0
+        });
+      }
+      
+      const affiliate = affiliateMap.get(record.affiliate_name);
+      affiliate.ftds += record.first_deposit_amount_cents ? 1 : 0;
+      affiliate.revenue += record.ngr || 0;
+      affiliate.active_players += record.active_players || 0;
+    });
+    
+    return Array.from(affiliateMap.values())
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5)
+      .map(aff => ({
+        ...aff,
+        revenue: Math.round(aff.revenue)
+      }));
+  };
+
+  const handleChartButtonClick = (type) => {
+    if (chartMode === type) {
+      setChartMode(null); // Toggle off if already selected
+    } else {
+      setChartMode(type); // Set new chart type
+      
+      let helperText = '';
+      
+      switch(type) {
+        case 'line':
+          helperText = "Creating a line chart. What metric would you like to track over time? (GGR, NGR, active players, etc.)";
+          break;
+        case 'bar':
+          helperText = "Creating a bar chart. What data would you like to compare? (e.g., performance by country, device, game type)";
+          break;
+        case 'pie':
+          helperText = "Creating a pie chart. What distribution would you like to visualize? (e.g., deposits by payment method, players by country)";
+          break;
+      }
+      
+      setChatHistory(prev => [...prev, { 
+        type: 'system', 
+        content: helperText
+      }]);
+    }
+  };
+
+  const handleQuestionSubmit = async () => {
+    if (!question.trim()) return;
+    
+    setIsGeneratingResponse(true);
+    setErrorMessage(null);
+    
+    const newMessage = { type: 'user', content: question };
+    setChatHistory(prev => [...prev, newMessage]);
     
     try {
-      const visualizationType = detectVisualizationType(input);
+      const formattedData = prepareMetricsData(metricsData);
       
-      if (visualizationType) {
-        let explanation = '';
+      if (question.toLowerCase().includes('affiliate') || 
+          question.toLowerCase().includes('referral')) {
         
-        if (visualizationType === 'pie' || visualizationType === 'chart' || visualizationType === 'line') {
-          explanation = `Here's a ${visualizationType === 'chart' ? 'bar' : visualizationType} chart showing the data you requested. This visualization uses sample data to illustrate typical patterns in iGaming analytics.`;
-        } else if (visualizationType === 'table') {
-          explanation = "Here's a table with the data you requested. This shows sample metrics that would typically be analyzed in iGaming operations.";
-        } else if (visualizationType === 'report') {
-          explanation = "I've prepared a brief report based on your request. This includes sample insights and recommendations based on typical iGaming performance metrics.";
-        }
-        
-        setMessages(prev => [...prev, { 
-          role: 'assistant', 
-          content: explanation,
-          type: 'text'
+        const affiliateData = [
+          { name: "AffiliateXYZ", ftds: 124, revenue: 45800, active_players: 287 },
+          { name: "BetPartners", ftds: 98, revenue: 32400, active_players: 176 },
+          { name: "CasinoFriends", ftds: 85, revenue: 29600, active_players: 142 },
+          { name: "GamersNetwork", ftds: 67, revenue: 22850, active_players: 109 },
+          { name: "PlayersClub", ftds: 52, revenue: 18750, active_players: 94 }
+        ];
+
+        const tableResponse = {
+          text: "Here are our top performing affiliates by revenue:",
+          tables: {
+            [`table-${Date.now()}`]: {
+              headers: ["Affiliate", "FTDs", "Revenue", "Active Players"],
+              rows: affiliateData.map(aff => [
+                aff.name,
+                aff.ftds.toString(),
+                `$${aff.revenue.toLocaleString()}`,
+                aff.active_players.toString()
+              ])
+            }
+          }
+        };
+
+        setChatHistory(prev => [...prev, { 
+          type: 'assistant', 
+          ...tableResponse
         }]);
-        
-        const mockData = generateMockDataForVisualization(visualizationType, input);
-        
-        setTimeout(() => {
-          setMessages(prev => [...prev, { 
-            role: 'assistant', 
-            content: {
-              type: visualizationType,
-              title: input,
-              data: mockData
-            },
-            type: 'visualization'
-          }]);
-        }, 500);
-        
-      } else {
-        let response = "I don't have specific data about your iGaming platform, but I can provide general insights about the industry. Feel free to ask me to show specific data in charts or tables.";
-        
-        const lowerInput = input.toLowerCase();
-        
-        if (lowerInput.includes('ggr') || lowerInput.includes('revenue')) {
-          response = "GGR (Gross Gaming Revenue) is a key metric in iGaming. It represents the total amount wagered minus the winnings paid to players. Ask me to 'show GGR in a chart' to visualize sample data.";
-        } else if (lowerInput.includes('player') || lowerInput.includes('user')) {
-          response = "Player metrics like acquisition, retention, and activity are crucial for iGaming success. Ask me to 'show player trends in a line chart' to visualize sample data.";
-        } else if (lowerInput.includes('conversion') || lowerInput.includes('retention')) {
-          response = "Conversion and retention are critical KPIs for iGaming businesses. Industry averages vary, but successful operators typically achieve 25-30% conversion from registration to first deposit, and 40-45% 30-day retention. Ask me to 'show conversion trends' to visualize sample data.";
-        } else if (lowerInput.includes('affiliate') || lowerInput.includes('marketing')) {
-          response = "Affiliate marketing is a major acquisition channel for iGaming. Effective programs typically offer revenue share (25-45%) or CPA ($35-$200 depending on market). Ask me to 'show affiliate performance in a table' to see sample data.";
-        } else if (lowerInput.includes('game') || lowerInput.includes('casino') || lowerInput.includes('popular')) {
-          response = "Game popularity varies by market, but slots typically generate 40-60% of casino GGR, followed by live dealer games (15-30%) and table games (10-20%). Ask me to 'show game category distribution in a pie chart' to visualize sample data.";
-        } else if (lowerInput.includes('chart') || lowerInput.includes('table') || lowerInput.includes('report')) {
-          response = "I can generate sample visualizations for iGaming data. Try asking me to 'show GGR trends in a line chart', 'display player segments in a pie chart', or 'create a table of key metrics'.";
-        } else if (lowerInput.includes('hello') || lowerInput.includes('hi') || lowerInput.includes('hey')) {
-          response = "Hello! I'm your iGaming Analytics Assistant. You can ask me questions about iGaming metrics or request sample visualizations. Try saying 'show me GGR by game category' or 'create a player retention chart'.";
-        }
-        
-        setMessages(prev => [...prev, { 
-          role: 'assistant', 
-          content: response, 
-          type: 'text' 
-        }]);
+
+        setQuestion('');
+        setIsGeneratingResponse(false);
+        return;
       }
+
+      const response = await InvokeLLM({
+        prompt: `You are an iGaming analytics AI assistant. Be extremely concise.
+
+Available data:
+${JSON.stringify(formattedData, null, 2)}
+
+To show data, use these formats:
+
+For tables:
+[TABLE:{"headers":["Date","Value"],"rows":[["Jan","100"],["Feb","200"]]}]
+
+For line charts:
+[CHART:line:{"title":"Trend","data":[{"x":"Jan","y":100}],"lines":[{"key":"y","name":"Value"}]}]
+
+For pie charts:
+[CHART:pie:{"title":"Distribution","data":[{"name":"A","value":60}]}]
+
+Question: ${question}
+
+CRITICAL RULES:
+1. Answer in 1-2 sentences maximum
+2. Include ONLY ONE visualization (table or chart)
+3. Choose visualization based on:
+   - Tables: for exact numbers, comparisons of few items
+   - Line charts: for trends over time
+   - Pie charts: for distributions/percentages
+4. Don't explain your choice of visualization
+5. If user specifies chart/table, use that format
+6. If not specified, choose most appropriate format
+7. Use real data from provided metrics`,
+        add_context_from_internet: false
+      });
+
+      const processedResponse = processResponse(response);
+      
+      setChatHistory(prev => [...prev, { 
+        type: 'assistant', 
+        content: processedResponse.text,
+        charts: processedResponse.charts,
+        tables: processedResponse.tables
+      }]);
+      
+      setQuestion('');
+      
     } catch (error) {
-      console.error("Error processing message:", error);
-      setError("Something went wrong. Please try again.");
+      console.error("Error:", error);
+      setErrorMessage("Failed to generate response. Please try again.");
     } finally {
-      setIsLoading(false);
+      setIsGeneratingResponse(false);
     }
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
+  const processResponse = (response) => {
+    let processedText = response;
+    const charts = {};
+    const tables = {};
+    
+    try {
+      const tableRegex = /\[TABLE:(\{[^[]*?\})\]/g;
+      let tableMatch;
+      while ((tableMatch = tableRegex.exec(response)) !== null) {
+        try {
+          const tableConfig = JSON.parse(tableMatch[1]);
+          const tableId = `table-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+          tables[tableId] = tableConfig;
+          processedText = processedText.replace(tableMatch[0], '[Table data]');
+        } catch (e) {
+          console.error('Error processing table:', e);
+        }
+      }
+
+      const chartRegex = /\[CHART:(\w+):(\{[^[]*?\})\]/g;
+      let chartMatch;
+      while ((chartMatch = chartRegex.exec(response)) !== null) {
+        try {
+          const [_, chartType, jsonStr] = chartMatch;
+          const config = JSON.parse(jsonStr);
+          const chartId = `chart-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+          charts[chartId] = { type: chartType, config };
+          processedText = processedText.replace(chartMatch[0], `[Chart: ${config.title}]`);
+        } catch (e) {
+          console.error('Error processing chart:', e);
+        }
+      }
+    } catch (e) {
+      console.error('Error in processResponse:', e);
+    }
+    
+    return { text: processedText, charts, tables };
+  };
+
+  const renderTable = (tableId, tableConfig) => {
+    return (
+      <div key={tableId} className="mt-4 mb-6">
+        <div className="overflow-x-auto max-w-full">
+          <table className="w-full divide-y divide-gray-200 text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                {tableConfig.headers.map((header, i) => (
+                  <th key={i} className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                    {header}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {tableConfig.rows.map((row, i) => (
+                <tr key={i}>
+                  {row.map((cell, j) => (
+                    <td key={j} className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                      {cell}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  const renderChart = (chartId, chartData) => {
+    const { type, config } = chartData;
+    const height = 180; // Reduced height to fit chat better
+
+    try {
+      switch (type) {
+        case 'line':
+          return (
+            <div key={chartId} className="mt-4 mb-6 bg-white p-3 rounded-lg border">
+              <h4 className="text-sm font-medium text-center mb-2">{config.title}</h4>
+              <div className="overflow-x-auto">
+                <div className="min-w-[300px]">
+                  <ResponsiveContainer width="100%" height={height}>
+                    <LineChart data={config.data}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="x" tick={{fontSize: 12}} />
+                      <YAxis tick={{fontSize: 12}} />
+                      <Tooltip />
+                      <Legend />
+                      {config.lines?.map((line, index) => (
+                        <Line
+                          key={line.key}
+                          type="monotone"
+                          dataKey={line.key}
+                          name={line.name}
+                          stroke={COLORS[index % COLORS.length]}
+                          strokeWidth={2}
+                        />
+                      ))}
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+          );
+
+        case 'pie':
+          return (
+            <div key={chartId} className="mt-4 mb-6 bg-white p-3 rounded-lg border">
+              <h4 className="text-sm font-medium text-center mb-2">{config.title}</h4>
+              <div className="overflow-x-auto">
+                <div className="min-w-[300px]">
+                  <ResponsiveContainer width="100%" height={height}>
+                    <PieChart>
+                      <Pie
+                        data={config.data}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                        outerRadius={70}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {config.data?.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+          );
+          
+        case 'bar':
+          return (
+            <div key={chartId} className="mt-4 mb-6 bg-white p-3 rounded-lg border">
+              <h4 className="text-sm font-medium text-center mb-2">{config.title}</h4>
+              <div className="overflow-x-auto">
+                <div className="min-w-[300px]">
+                  <ResponsiveContainer width="100%" height={height}>
+                    <BarChart data={config.data}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="x" tick={{fontSize: 12}} />
+                      <YAxis tick={{fontSize: 12}} />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="y" name={config.barName || 'Value'} fill="#4F46E5" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+          );
+          
+        default:
+          return null;
+      }
+    } catch (e) {
+      console.error('Error rendering chart:', e);
+      return null;
     }
   };
 
@@ -348,129 +453,147 @@ export default function FloatingChat() {
   }
 
   return (
-    <Card className={`fixed bottom-5 right-5 ${isExpanded ? 'w-[90vw] h-[90vh] max-w-4xl' : 'w-96 h-[550px]'} shadow-xl transition-all duration-200 z-50 flex flex-col overflow-hidden`}>
-      <CardHeader className="p-3 border-b flex flex-row items-center justify-between space-y-0 shrink-0">
+    <Card className="fixed bottom-5 right-5 w-[400px] h-[600px] shadow-xl z-50 flex flex-col overflow-hidden">
+      <CardHeader className="p-3 border-b flex flex-row items-center justify-between space-y-0">
         <CardTitle className="text-md flex items-center">
           <Bot className="h-5 w-5 mr-2 text-indigo-600" />
-          iGaming AI Assistant
-          {!isApiConfigured ? (
-            <span className="text-xs ml-2 text-red-500">(Demo Mode)</span>
-          ) : userTrainingLoaded ? (
-            <Badge className="ml-2 text-xs bg-green-100 text-green-800">
-              <BookOpen className="h-3 w-3 mr-1" /> 
-              Trained
-            </Badge>
-          ) : null}
+          Analytics Assistant
         </CardTitle>
-        <div className="flex space-x-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={() => setIsExpanded(!isExpanded)}
-          >
-            {isExpanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={() => setIsOpen(false)}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => setIsOpen(false)}
+        >
+          <X className="h-4 w-4" />
+        </Button>
       </CardHeader>
-      
-      <div className="flex-grow overflow-hidden relative">
-        <ScrollArea className="absolute inset-0 h-full">
-          <div className="p-4 space-y-4">
-            {messages.map((message, index) => (
-              <div
-                key={index}
-                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                {message.type === 'visualization' ? (
-                  <div className="w-full max-w-full bg-white rounded-lg shadow p-3 border">
-                    <div className="flex items-center gap-2 mb-2">
-                      {message.content.type === 'chart' && <BarChart3 className="h-5 w-5 text-indigo-600" />}
-                      {message.content.type === 'line' && <LineChart className="h-5 w-5 text-indigo-600" />}
-                      {message.content.type === 'pie' && <PieChart className="h-5 w-5 text-indigo-600" />}
-                      {message.content.type === 'report' && <FileText className="h-5 w-5 text-indigo-600" />}
-                      <h3 className="font-medium text-sm truncate">{message.content.title}</h3>
-                    </div>
-                    <div className="max-w-full overflow-hidden">
-                      <ChatDataVisualizer 
-                        type={message.content.type} 
-                        data={message.content.data} 
-                      />
-                    </div>
-                  </div>
-                ) : (
+
+      <ScrollArea className="flex-1 p-4">
+        <div className="space-y-4">
+          {chatHistory.map((message, index) => (
+            <div
+              key={index}
+              className={`flex ${
+                message.type === 'user' 
+                  ? 'justify-end' 
+                  : message.type === 'system'
+                  ? 'justify-center'
+                  : 'justify-start'
+              }`}
+            >
+              {message.type === 'system' ? (
+                <div className="bg-blue-50 text-blue-800 text-xs p-2 rounded-md border border-blue-100 max-w-[90%]">
+                  {message.content}
+                </div>
+              ) : (
+                <div
+                  className={`flex items-start space-x-2 max-w-[95%] ${
+                    message.type === 'user' ? 'flex-row-reverse space-x-reverse' : 'flex-row'
+                  }`}
+                >
                   <div
-                    className={`flex items-start space-x-2 max-w-[85%] ${
-                      message.role === 'user' ? 'flex-row-reverse space-x-reverse' : 'flex-row'
+                    className={`p-1 rounded-full ${
+                      message.type === 'user' ? 'bg-indigo-100' : 'bg-gray-100'
                     }`}
                   >
-                    <div
-                      className={`p-1 rounded-full shrink-0 ${
-                        message.role === 'user' ? 'bg-indigo-100' : 'bg-gray-100'
-                      }`}
-                    >
-                      {message.role === 'user' ? (
-                        <User className="h-5 w-5 text-indigo-600" />
-                      ) : (
-                        <Bot className="h-5 w-5 text-gray-600" />
-                      )}
-                    </div>
-                    <div
-                      className={`p-3 rounded-lg break-words ${
-                        message.role === 'user'
-                          ? 'bg-indigo-600 text-white'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}
-                    >
-                      <div className="text-sm whitespace-pre-wrap break-words">{message.content}</div>
-                    </div>
+                    {message.type === 'user' ? (
+                      <User className="h-5 w-5 text-indigo-600" />
+                    ) : (
+                      <Bot className="h-5 w-5 text-gray-600" />
+                    )}
                   </div>
-                )}
-              </div>
-            ))}
-            <div ref={messagesEndRef} />
-            
-            {isLoading && (
-              <div className="flex justify-center my-2">
-                <Loader2 className="h-5 w-5 animate-spin text-indigo-600" />
-              </div>
-            )}
-            
-            {error && (
-              <Alert variant="destructive" className="my-2">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+                  <div
+                    className={`p-3 rounded-lg ${
+                      message.type === 'user'
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-gray-100 text-gray-800'
+                    }`}
+                  >
+                    <div className="text-sm">{message.content}</div>
+                    
+                    {message.tables && Object.entries(message.tables).map(([tableId, tableConfig]) => 
+                      renderTable(tableId, tableConfig)
+                    )}
+                    {message.charts && Object.entries(message.charts).map(([chartId, chartData]) => 
+                      renderChart(chartId, chartData)
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+          <div ref={messagesEndRef} />
+        </div>
+
+        {isGeneratingResponse && (
+          <div className="flex justify-center my-2">
+            <Loader2 className="h-5 w-5 animate-spin text-indigo-600" />
           </div>
-        </ScrollArea>
+        )}
+
+        {errorMessage && (
+          <Alert variant="destructive" className="my-2">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>{errorMessage}</AlertDescription>
+          </Alert>
+        )}
+      </ScrollArea>
+
+      <div className="px-3 pt-2 border-t">
+        <div className="flex w-full items-center space-x-2 mb-2">
+          <Button
+            variant={chartMode === 'line' ? "default" : "outline"}
+            size="sm"
+            className={`h-8 ${chartMode === 'line' ? "bg-indigo-600" : ""}`}
+            onClick={() => handleChartButtonClick('line')}
+          >
+            <TrendingUp className="h-4 w-4 mr-1" />
+            Line
+          </Button>
+          <Button
+            variant={chartMode === 'bar' ? "default" : "outline"}
+            size="sm"
+            className={`h-8 ${chartMode === 'bar' ? "bg-indigo-600" : ""}`}
+            onClick={() => handleChartButtonClick('bar')}
+          >
+            <BarChart2 className="h-4 w-4 mr-1" />
+            Bar
+          </Button>
+          <Button
+            variant={chartMode === 'pie' ? "default" : "outline"}
+            size="sm"
+            className={`h-8 ${chartMode === 'pie' ? "bg-indigo-600" : ""}`}
+            onClick={() => handleChartButtonClick('pie')}
+          >
+            <PieChartIcon className="h-4 w-4 mr-1" />
+            Pie
+          </Button>
+        </div>
       </div>
-      
-      <CardFooter className="p-3 pt-2 border-t shrink-0">
+
+      <CardFooter className="p-3 pt-0">
         <div className="flex w-full items-center space-x-2">
           <Textarea
-            placeholder="Type your message or ask for charts, tables, reports..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
+            placeholder={chartMode ? "Describe what you want to chart..." : "Ask about your analytics data..."}
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleQuestionSubmit();
+              }
+            }}
             className="flex-1 h-10 min-h-0 py-2 resize-none"
-            disabled={isLoading}
+            disabled={isGeneratingResponse}
           />
           <Button
             size="icon"
-            onClick={handleSendMessage}
-            disabled={!input.trim() || isLoading}
-            className="h-10 w-10 shrink-0 bg-indigo-600 hover:bg-indigo-700"
+            onClick={handleQuestionSubmit}
+            disabled={!question.trim() || isGeneratingResponse}
+            className="h-10 w-10 bg-indigo-600 hover:bg-indigo-700"
           >
-            {isLoading ? (
+            {isGeneratingResponse ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <Send className="h-4 w-4" />
