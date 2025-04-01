@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Github, Lock, GitBranch, RefreshCw, Download, ArrowDownToLine, Loader2, CheckCircle2, AlertCircle, InfoIcon, ArrowUpToLine } from "lucide-react";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -16,12 +18,15 @@ export default function GitHubSync() {
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [repoUrl, setRepoUrl] = useState('');
+  const [cloneRepoUrl, setCloneRepoUrl] = useState('');
+  const [syncToClone, setSyncToClone] = useState(true);
   const [selectedBranch, setSelectedBranch] = useState('main');
   const [exportHistory, setExportHistory] = useState([
     { id: 1, date: '2023-06-15 14:32', status: 'success', commit: 'a8e72f9', message: 'Updated player segmentation logic' },
     { id: 2, date: '2023-06-10 09:15', status: 'success', commit: '5c4d1e3', message: 'Added new affiliate tracking' },
     { id: 3, date: '2023-06-05 16:45', status: 'failed', commit: '', message: 'Network error during sync' }
   ]);
+  const [isUpdating, setIsUpdating] = useState(false);
   
   const handleConnect = () => {
     if (!repoUrl) return;
@@ -40,6 +45,7 @@ export default function GitHubSync() {
     
     // Simulate export
     setTimeout(() => {
+      const commitHash = Math.random().toString(16).substring(2, 8);
       const newExport = {
         id: exportHistory.length + 1,
         date: new Date().toLocaleString('en-US', {
@@ -50,12 +56,28 @@ export default function GitHubSync() {
           minute: '2-digit'
         }),
         status: 'success',
-        commit: Math.random().toString(16).substring(2, 8),
-        message: 'Export from analytics dashboard'
+        commit: commitHash,
+        message: 'Export from analytics dashboard',
+        repositories: [repoUrl]
       };
+
+      // If clone repo is configured and sync is enabled, add it to repositories
+      if (syncToClone && cloneRepoUrl) {
+        newExport.repositories.push(cloneRepoUrl);
+      }
       
       setExportHistory([newExport, ...exportHistory]);
       setIsLoading(false);
+      
+      if (syncToClone && cloneRepoUrl) {
+        alert(`Changes successfully pushed to:
+1. Main repository: ${repoUrl}
+2. Clone repository: ${cloneRepoUrl}
+
+Commit hash: ${commitHash}`);
+      } else {
+        alert(`Changes pushed to main repository: ${repoUrl}\nCommit hash: ${commitHash}`);
+      }
     }, 2000);
   };
   
@@ -67,6 +89,15 @@ export default function GitHubSync() {
       setIsLoading(false);
       alert('Import successful! The application has been updated with the selected GitHub version.');
     }, 2000);
+  };
+
+  const handleSaveCloneSettings = () => {
+    setIsUpdating(true);
+    // Simulate saving
+    setTimeout(() => {
+      setIsUpdating(false);
+      alert('Clone repository settings saved successfully');
+    }, 1000);
   };
 
   return (
@@ -133,6 +164,49 @@ export default function GitHubSync() {
                           <SelectItem value="feature/affiliate-tracking">feature/affiliate-tracking</SelectItem>
                         </SelectContent>
                       </Select>
+                    </div>
+
+                    {/* Update clone repository setup */}
+                    <div className="space-y-3 border-t pt-4 mt-4">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="clone-repo-url">Clone Repository (Optional)</Label>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-500">Sync to clone</span>
+                          <Switch 
+                            checked={syncToClone} 
+                            onCheckedChange={setSyncToClone} 
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Input 
+                          id="clone-repo-url" 
+                          placeholder="https://github.com/yourusername/your-clone-repo" 
+                          value={cloneRepoUrl} 
+                          onChange={(e) => setCloneRepoUrl(e.target.value)}
+                        />
+                        <Button 
+                          onClick={handleSaveCloneSettings}
+                          disabled={isUpdating || !cloneRepoUrl}
+                          size="sm"
+                          className="w-full"
+                        >
+                          {isUpdating ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                              Saving...
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle2 className="h-4 w-4 mr-2" />
+                              Save Clone Settings
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                      <p className="text-sm text-gray-500">
+                        When you export changes, they will also be pushed to this clone repository
+                      </p>
                     </div>
                     
                     <div className="pt-2">
@@ -221,10 +295,29 @@ export default function GitHubSync() {
                           <SelectItem value="main">main</SelectItem>
                           <SelectItem value="develop">develop</SelectItem>
                           <SelectItem value="staging">staging</SelectItem>
-                          <SelectItem value="feature/affiliate-tracking">feature/affiliate-tracking</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
+                    
+                    {cloneRepoUrl && (
+                      <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-100 rounded-md">
+                        <div className="flex-shrink-0">
+                          <Github className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div className="flex-grow">
+                          <p className="text-sm text-blue-700">
+                            <strong>Clone Sync:</strong> Changes will also be pushed to {cloneRepoUrl}
+                          </p>
+                        </div>
+                        <div className="flex-shrink-0">
+                          <Switch 
+                            checked={syncToClone} 
+                            onCheckedChange={setSyncToClone} 
+                            className="data-[state=checked]:bg-blue-600"
+                          />
+                        </div>
+                      </div>
+                    )}
                     
                     <div className="bg-blue-50 border border-blue-100 rounded-md p-4">
                       <h3 className="font-medium text-blue-800">Export will include:</h3>
