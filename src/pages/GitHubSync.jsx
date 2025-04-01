@@ -18,7 +18,7 @@ export default function GitHubSync() {
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [repoUrl, setRepoUrl] = useState('');
-  const [cloneRepoUrl, setCloneRepoUrl] = useState('');
+  const [cloneRepoUrl, setCloneRepoUrl] = useState('https://github.com/alBG23/i-gaming-insight-clone');
   const [syncToClone, setSyncToClone] = useState(true);
   const [selectedBranch, setSelectedBranch] = useState('main');
   const [exportHistory, setExportHistory] = useState([
@@ -27,6 +27,7 @@ export default function GitHubSync() {
     { id: 3, date: '2023-06-05 16:45', status: 'failed', commit: '', message: 'Network error during sync' }
   ]);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [commitMessage, setCommitMessage] = useState('');
   
   const handleConnect = () => {
     if (!repoUrl) return;
@@ -41,11 +42,23 @@ export default function GitHubSync() {
   };
   
   const handleExport = () => {
+    if (!isConnected) {
+      alert('Please connect to GitHub repository first');
+      return;
+    }
+
     setIsLoading(true);
     
-    // Simulate export
+    // Simulate export process
     setTimeout(() => {
       const commitHash = Math.random().toString(16).substring(2, 8);
+      const repos = [repoUrl];
+      
+      // Check if clone repo should be included
+      if (syncToClone && cloneRepoUrl) {
+        repos.push(cloneRepoUrl);
+      }
+
       const newExport = {
         id: exportHistory.length + 1,
         date: new Date().toLocaleString('en-US', {
@@ -57,27 +70,18 @@ export default function GitHubSync() {
         }),
         status: 'success',
         commit: commitHash,
-        message: 'Export from analytics dashboard',
-        repositories: [repoUrl]
+        message: commitMessage || 'Export from analytics dashboard',
+        repositories: repos
       };
-
-      // If clone repo is configured and sync is enabled, add it to repositories
-      if (syncToClone && cloneRepoUrl) {
-        newExport.repositories.push(cloneRepoUrl);
-      }
       
-      setExportHistory([newExport, ...exportHistory]);
+      setExportHistory(prev => [newExport, ...prev]);
+      
+      // Show confirmation with all updated repositories
+      const message = `Export successful!\n\nCommit: ${commitHash}\n\nUpdated repositories:\n${repos.map(repo => `- ${repo}`).join('\n')}`;
+      alert(message);
+      
       setIsLoading(false);
-      
-      if (syncToClone && cloneRepoUrl) {
-        alert(`Changes successfully pushed to:
-1. Main repository: ${repoUrl}
-2. Clone repository: ${cloneRepoUrl}
-
-Commit hash: ${commitHash}`);
-      } else {
-        alert(`Changes pushed to main repository: ${repoUrl}\nCommit hash: ${commitHash}`);
-      }
+      setCommitMessage('');
     }, 2000);
   };
   
@@ -92,13 +96,83 @@ Commit hash: ${commitHash}`);
   };
 
   const handleSaveCloneSettings = () => {
+    if (!cloneRepoUrl) {
+      alert('Please enter a clone repository URL');
+      return;
+    }
+    
     setIsUpdating(true);
-    // Simulate saving
+    
     setTimeout(() => {
       setIsUpdating(false);
-      alert('Clone repository settings saved successfully');
+      alert(`Clone repository settings saved successfully:\n\nRepository: ${cloneRepoUrl}\nSync enabled: ${syncToClone}`);
     }, 1000);
   };
+
+  const renderCloneRepoSettings = () => (
+    <div className="space-y-3 border-t pt-4 mt-4">
+      <div className="flex items-center justify-between">
+        <Label htmlFor="clone-repo-url">Clone Repository</Label>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-500">Sync enabled</span>
+          <Switch 
+            checked={syncToClone} 
+            onCheckedChange={setSyncToClone} 
+          />
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Input 
+          id="clone-repo-url" 
+          value={cloneRepoUrl} 
+          onChange={(e) => setCloneRepoUrl(e.target.value)}
+          placeholder="Enter clone repository URL"
+        />
+        <Button 
+          onClick={handleSaveCloneSettings}
+          disabled={isUpdating || !cloneRepoUrl}
+          className="w-full"
+        >
+          {isUpdating ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              Saving Clone Settings...
+            </>
+          ) : (
+            <>
+              <CheckCircle2 className="h-4 w-4 mr-2" />
+              Save Clone Settings
+            </>
+          )}
+        </Button>
+      </div>
+      {syncToClone && cloneRepoUrl && (
+        <Alert className="bg-blue-50 border-blue-100">
+          <InfoIcon className="h-4 w-4 text-blue-600" />
+          <AlertDescription className="text-blue-700">
+            Changes will be automatically pushed to both repositories when exporting
+          </AlertDescription>
+        </Alert>
+      )}
+    </div>
+  );
+
+  const renderExportCloneStatus = () => (
+    syncToClone && cloneRepoUrl && (
+      <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-100 rounded-md">
+        <Github className="h-5 w-5 text-blue-600" />
+        <div className="flex-grow">
+          <p className="text-sm text-blue-700">
+            <strong>Clone Repository Sync:</strong> Changes will be pushed to both repositories:
+            <br />
+            1. Main: {repoUrl}
+            <br />
+            2. Clone: {cloneRepoUrl}
+          </p>
+        </div>
+      </div>
+    )
+  );
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -166,48 +240,7 @@ Commit hash: ${commitHash}`);
                       </Select>
                     </div>
 
-                    {/* Update clone repository setup */}
-                    <div className="space-y-3 border-t pt-4 mt-4">
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="clone-repo-url">Clone Repository (Optional)</Label>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-gray-500">Sync to clone</span>
-                          <Switch 
-                            checked={syncToClone} 
-                            onCheckedChange={setSyncToClone} 
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Input 
-                          id="clone-repo-url" 
-                          placeholder="https://github.com/yourusername/your-clone-repo" 
-                          value={cloneRepoUrl} 
-                          onChange={(e) => setCloneRepoUrl(e.target.value)}
-                        />
-                        <Button 
-                          onClick={handleSaveCloneSettings}
-                          disabled={isUpdating || !cloneRepoUrl}
-                          size="sm"
-                          className="w-full"
-                        >
-                          {isUpdating ? (
-                            <>
-                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                              Saving...
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle2 className="h-4 w-4 mr-2" />
-                              Save Clone Settings
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                      <p className="text-sm text-gray-500">
-                        When you export changes, they will also be pushed to this clone repository
-                      </p>
-                    </div>
+                    {renderCloneRepoSettings()}
                     
                     <div className="pt-2">
                       <Button onClick={() => setIsConnected(false)} variant="outline">
@@ -264,7 +297,7 @@ Commit hash: ${commitHash}`);
               <CardHeader>
                 <CardTitle>Export to GitHub</CardTitle>
                 <CardDescription>
-                  Push your current analytics configuration to GitHub
+                  Push your analytics configuration to GitHub
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -280,81 +313,29 @@ Commit hash: ${commitHash}`);
                     <div className="space-y-2">
                       <Label htmlFor="commit-message">Commit Message</Label>
                       <Input 
-                        id="commit-message" 
-                        placeholder="Describe your changes..." 
+                        id="commit-message"
+                        value={commitMessage}
+                        onChange={(e) => setCommitMessage(e.target.value)}
+                        placeholder="Describe your changes..."
                       />
                     </div>
                     
-                    <div className="space-y-2">
-                      <Label>Target Branch</Label>
-                      <Select defaultValue={selectedBranch}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select branch" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="main">main</SelectItem>
-                          <SelectItem value="develop">develop</SelectItem>
-                          <SelectItem value="staging">staging</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    {cloneRepoUrl && (
-                      <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-100 rounded-md">
-                        <div className="flex-shrink-0">
-                          <Github className="h-5 w-5 text-blue-600" />
-                        </div>
-                        <div className="flex-grow">
-                          <p className="text-sm text-blue-700">
-                            <strong>Clone Sync:</strong> Changes will also be pushed to {cloneRepoUrl}
-                          </p>
-                        </div>
-                        <div className="flex-shrink-0">
-                          <Switch 
-                            checked={syncToClone} 
-                            onCheckedChange={setSyncToClone} 
-                            className="data-[state=checked]:bg-blue-600"
-                          />
-                        </div>
-                      </div>
-                    )}
-                    
-                    <div className="bg-blue-50 border border-blue-100 rounded-md p-4">
-                      <h3 className="font-medium text-blue-800">Export will include:</h3>
-                      <ul className="mt-2 space-y-1 text-sm text-blue-700">
-                        <li className="flex items-center gap-2">
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          Custom analytics dashboards
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          Alert configurations
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          AI training configuration
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          Custom reports
-                        </li>
-                      </ul>
-                    </div>
+                    {renderExportCloneStatus()}
                     
                     <div className="pt-2">
                       <Button 
                         onClick={handleExport} 
                         disabled={isLoading} 
-                        className="gap-2"
+                        className="w-full"
                       >
                         {isLoading ? (
                           <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Exporting...
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            Exporting to GitHub...
                           </>
                         ) : (
                           <>
-                            <ArrowUpToLine className="h-4 w-4" />
+                            <ArrowUpToLine className="h-4 w-4 mr-2" />
                             Export to GitHub
                           </>
                         )}
