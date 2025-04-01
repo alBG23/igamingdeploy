@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,7 @@ export default function GitHubSync() {
   const [activeTab, setActiveTab] = useState('setup');
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [repoUrl, setRepoUrl] = useState('');
+  const [repoUrl, setRepoUrl] = useState('https://github.com/base44dev/i-gaming-insight-f6c3b3fd.git');
   const [cloneRepoUrl, setCloneRepoUrl] = useState('https://github.com/alBG23/i-gaming-insight-clone');
   const [syncToClone, setSyncToClone] = useState(true);
   const [selectedBranch, setSelectedBranch] = useState('main');
@@ -38,8 +38,25 @@ export default function GitHubSync() {
     setTimeout(() => {
       setIsConnected(true);
       setIsLoading(false);
+      // Store the connection details
+      localStorage.setItem('githubConfig', JSON.stringify({
+        repoUrl,
+        cloneRepoUrl,
+        syncToClone
+      }));
     }, 1500);
   };
+
+  // Load saved configuration on component mount
+  useEffect(() => {
+    const savedConfig = localStorage.getItem('githubConfig');
+    if (savedConfig) {
+      const config = JSON.parse(savedConfig);
+      setRepoUrl(config.repoUrl);
+      setCloneRepoUrl(config.cloneRepoUrl);
+      setSyncToClone(config.syncToClone);
+    }
+  }, []);
   
   const handleExport = () => {
     if (!isConnected) {
