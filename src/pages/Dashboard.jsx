@@ -123,107 +123,49 @@ export default function Dashboard() {
                   </Card>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  <div className="lg:col-span-2">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Revenue Trend</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="h-[300px]">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={overviewData}>
-                              <defs>
-                                <linearGradient id="colorGgr" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.8} />
-                                  <stop offset="95%" stopColor="#4F46E5" stopOpacity={0} />
-                                </linearGradient>
-                                <linearGradient id="colorNgr" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="5%" stopColor="#06B6D4" stopOpacity={0.8} />
-                                  <stop offset="95%" stopColor="#06B6D4" stopOpacity={0} />
-                                </linearGradient>
-                              </defs>
-                              <XAxis dataKey="date" />
-                              <YAxis />
-                              <CartesianGrid strokeDasharray="3 3" />
-                              <Tooltip />
-                              <Legend />
-                              <Area
-                                type="monotone"
-                                dataKey="ggr"
-                                stroke="#4F46E5"
-                                fillOpacity={1}
-                                fill="url(#colorGgr)"
-                              />
-                              <Area
-                                type="monotone"
-                                dataKey="ngr"
-                                stroke="#06B6D4"
-                                fillOpacity={1}
-                                fill="url(#colorNgr)"
-                              />
-                            </AreaChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  <div>
-                    <Card className="h-full">
-                      <CardHeader>
-                        <CardTitle>Conversion Funnel</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-8">
-                          <div className="relative">
-                            <div className="flex justify-between items-center mb-2">
-                              <div className="flex items-center gap-2">
-                                <Users className="h-5 w-5 text-blue-600" />
-                                <span className="font-medium">Visitors</span>
-                              </div>
-                              <span className="font-bold">12,450</span>
-                            </div>
-                            <div className="w-full h-12 bg-blue-100 rounded-lg flex items-center justify-center text-blue-700 font-medium">
-                              100%
-                            </div>
-                            <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2">
-                              <ArrowRight className="h-6 w-6 text-gray-400 rotate-90" />
-                            </div>
-                          </div>
-                          
-                          <div className="relative">
-                            <div className="flex justify-between items-center mb-2">
-                              <div className="flex items-center gap-2">
-                                <Activity className="h-5 w-5 text-indigo-600" />
-                                <span className="font-medium">Registrations</span>
-                              </div>
-                              <span className="font-bold">1,865</span>
-                            </div>
-                            <div className="w-full h-12 bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-700 font-medium">
-                              15%
-                            </div>
-                            <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2">
-                              <ArrowRight className="h-6 w-6 text-gray-400 rotate-90" />
-                            </div>
-                          </div>
-                          
-                          <div className="relative">
-                            <div className="flex justify-between items-center mb-2">
-                              <div className="flex items-center gap-2">
-                                <CreditCard className="h-5 w-5 text-purple-600" />
-                                <span className="font-medium">First Deposit</span>
-                              </div>
-                              <span className="font-bold">685</span>
-                            </div>
-                            <div className="w-full h-12 bg-purple-100 rounded-lg flex items-center justify-center text-purple-700 font-medium">
-                              5.5%
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
+                <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Revenue Trend</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={overviewData}>
+                            <defs>
+                              <linearGradient id="colorGgr" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.8} />
+                                <stop offset="95%" stopColor="#4F46E5" stopOpacity={0} />
+                              </linearGradient>
+                              <linearGradient id="colorNgr" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#06B6D4" stopOpacity={0.8} />
+                                <stop offset="95%" stopColor="#06B6D4" stopOpacity={0} />
+                              </linearGradient>
+                            </defs>
+                            <XAxis dataKey="date" />
+                            <YAxis />
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <Tooltip />
+                            <Legend />
+                            <Area
+                              type="monotone"
+                              dataKey="ggr"
+                              stroke="#4F46E5"
+                              fillOpacity={1}
+                              fill="url(#colorGgr)"
+                            />
+                            <Area
+                              type="monotone"
+                              dataKey="ngr"
+                              stroke="#06B6D4"
+                              fillOpacity={1}
+                              fill="url(#colorNgr)"
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
               </div>
             </TabsContent>
