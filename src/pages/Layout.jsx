@@ -23,8 +23,7 @@ import {
   DollarSign,
   FileText,
   Lock,
-  CloudIcon,
-  Github
+  CloudIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -52,7 +51,6 @@ export default function Layout({ children, currentPageName }) {
     { icon: FileWarning, label: "Data Validation", page: "DataValidation" },
     { icon: Database, label: "DB Schema", page: "SchemaDiscovery" },
     { icon: Database, label: "Data Import", page: "DataImport" },
-    { icon: Database, label: "Test CSV Upload", page: "DataImportTest" },
     { icon: Server, label: "Middleware API Guide", page: "MiddlewareAPIGuide" },
     { icon: CloudIcon, label: "Azure Integration", page: "AzureIntegrationGuide" },
     { icon: Lock, label: "Env Variables Guide", page: "EnvironmentVariablesGuide" },
