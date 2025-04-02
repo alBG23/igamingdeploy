@@ -28,7 +28,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import FloatingChat from "./components/FloatingChat";
+import FloatingChat from "@/components/FloatingChat";
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
