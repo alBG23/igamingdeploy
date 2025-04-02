@@ -1,4 +1,5 @@
 
+
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -34,7 +35,6 @@ import ExportProjectModal from "./components/ExportProjectModal";
 
 export default function Layout({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [exportModalOpen, setExportModalOpen] = useState(false);
   
   const navItems = [
     { icon: LayoutDashboard, label: "Dashboard", page: "Dashboard" },
@@ -59,11 +59,6 @@ export default function Layout({ children, currentPageName }) {
     { icon: Settings, label: "Integrations", page: "Integrations" },
     { icon: Server, label: "Production Setup", page: "ProductionSetupGuide" }
   ];
-
-  const handleExport = (exportData) => {
-    console.log("Exporting project with settings:", exportData);
-    // In a real app, this would initiate the export process
-  };
 
   return (
     <div className="flex h-screen bg-gray-100">
@@ -164,15 +159,6 @@ export default function Layout({ children, currentPageName }) {
           </div>
 
           <div className="flex items-center gap-3">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="hidden md:flex items-center gap-2"
-              onClick={() => setExportModalOpen(true)}
-            >
-              <Github className="h-4 w-4" />
-              Export to GitHub
-            </Button>
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />
               <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
@@ -191,12 +177,7 @@ export default function Layout({ children, currentPageName }) {
       </div>
       
       <FloatingChat />
-      
-      <ExportProjectModal 
-        open={exportModalOpen}
-        onOpenChange={setExportModalOpen}
-        onExport={handleExport}
-      />
     </div>
   );
 }
+
