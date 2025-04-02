@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,6 +27,34 @@ export default function GitHubSync() {
   ]);
   const [isUpdating, setIsUpdating] = useState(false);
   const [commitMessage, setCommitMessage] = useState('');
+  const [exportOption, setExportOption] = useState('code_only');
+  
+  // Load saved configuration on component mount
+  useEffect(() => {
+    const savedConfig = localStorage.getItem('githubConfig');
+    if (savedConfig) {
+      try {
+        const config = JSON.parse(savedConfig);
+        setRepoUrl(config.repoUrl);
+        setCloneRepoUrl(config.cloneRepoUrl);
+        setSyncToClone(config.syncToClone);
+        if (config.isConnected) {
+          setIsConnected(true);
+        }
+      } catch (e) {
+        console.error("Error loading saved config:", e);
+      }
+    }
+  }, []);
+  
+  const saveConfig = () => {
+    localStorage.setItem('githubConfig', JSON.stringify({
+      repoUrl,
+      cloneRepoUrl,
+      syncToClone,
+      isConnected
+    }));
+  };
   
   const handleConnect = () => {
     if (!repoUrl) return;
@@ -38,25 +65,9 @@ export default function GitHubSync() {
     setTimeout(() => {
       setIsConnected(true);
       setIsLoading(false);
-      // Store the connection details
-      localStorage.setItem('githubConfig', JSON.stringify({
-        repoUrl,
-        cloneRepoUrl,
-        syncToClone
-      }));
+      saveConfig();
     }, 1500);
   };
-
-  // Load saved configuration on component mount
-  useEffect(() => {
-    const savedConfig = localStorage.getItem('githubConfig');
-    if (savedConfig) {
-      const config = JSON.parse(savedConfig);
-      setRepoUrl(config.repoUrl);
-      setCloneRepoUrl(config.cloneRepoUrl);
-      setSyncToClone(config.syncToClone);
-    }
-  }, []);
   
   const handleExport = () => {
     if (!isConnected) {
@@ -88,13 +99,14 @@ export default function GitHubSync() {
         status: 'success',
         commit: commitHash,
         message: commitMessage || 'Export from analytics dashboard',
-        repositories: repos
+        repositories: repos,
+        export_type: exportOption
       };
       
       setExportHistory(prev => [newExport, ...prev]);
       
       // Show confirmation with all updated repositories
-      const message = `Export successful!\n\nCommit: ${commitHash}\n\nUpdated repositories:\n${repos.map(repo => `- ${repo}`).join('\n')}`;
+      const message = `Export successful!\n\nCommit: ${commitHash}\n\nExport type: ${exportOption === 'code_only' ? 'Source code only' : 'Complete project structure'}\n\nUpdated repositories:\n${repos.map(repo => `- ${repo}`).join('\n')}`;
       alert(message);
       
       setIsLoading(false);
@@ -122,6 +134,7 @@ export default function GitHubSync() {
     
     setTimeout(() => {
       setIsUpdating(false);
+      saveConfig();
       alert(`Clone repository settings saved successfully:\n\nRepository: ${cloneRepoUrl}\nSync enabled: ${syncToClone}`);
     }, 1000);
   };
@@ -260,7 +273,10 @@ export default function GitHubSync() {
                     {renderCloneRepoSettings()}
                     
                     <div className="pt-2">
-                      <Button onClick={() => setIsConnected(false)} variant="outline">
+                      <Button onClick={() => {
+                        setIsConnected(false);
+                        saveConfig();
+                      }} variant="outline">
                         Disconnect
                       </Button>
                     </div>
@@ -337,14 +353,29 @@ export default function GitHubSync() {
                       />
                     </div>
                     
-                    {renderExportCloneStatus()}
+                    <div className="space-y-2">
+                      <Label>Export Type</Label>
+                      <Select 
+                        value={exportOption} 
+                        onValueChange={setExportOption}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select export type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="code_only">Source Code Only</SelectItem>
+                          <SelectItem value="full_project">Complete Project Structure</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {exportOption === 'code_only' ? 
+                          "Exports only the source code files without the folder structure." :
+                          "Exports the complete project including all folders and files."
+                        }
+                      </p>
+                    </div>
                     
-                    <Alert className="bg-blue-50 border-blue-100">
-                      <InfoIcon className="h-4 w-4 text-blue-600" />
-                      <AlertDescription className="text-blue-700">
-                        <strong>Note:</strong> This will export the source code (.js, .jsx files) and configuration, not the file structure itself. The repo structure is maintained in the exported code.
-                      </AlertDescription>
-                    </Alert>
+                    {renderExportCloneStatus()}
                     
                     <div className="bg-blue-50 border border-blue-100 rounded-md p-4">
                       <h3 className="font-medium text-blue-800">Export will include:</h3>
@@ -490,6 +521,7 @@ export default function GitHubSync() {
                         <TableHead>Status</TableHead>
                         <TableHead>Commit</TableHead>
                         <TableHead>Message</TableHead>
+                        <TableHead>Type</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -505,6 +537,13 @@ export default function GitHubSync() {
                           </TableCell>
                           <TableCell>{item.commit || '—'}</TableCell>
                           <TableCell>{item.message}</TableCell>
+                          <TableCell>
+                            {item.export_type === 'full_project' ? (
+                              <Badge className="bg-indigo-100 text-indigo-800">Full Project</Badge>
+                            ) : (
+                              <Badge className="bg-blue-100 text-blue-800">Source Only</Badge>
+                            )}
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
