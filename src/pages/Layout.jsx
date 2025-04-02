@@ -1,7 +1,7 @@
 
 
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, Outlet } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import {
   LayoutDashboard,
@@ -32,7 +32,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import FloatingChat from "./components/FloatingChat";
 import ExportProjectModal from "./components/ExportProjectModal";
 
-export default function Layout({ children, currentPageName }) {
+export default function Layout({ currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
   const navItems = [
@@ -170,7 +170,7 @@ export default function Layout({ children, currentPageName }) {
         </header>
 
         <main className="flex-1 overflow-auto">
-          {children}
+          <Outlet />
         </main>
       </div>
       
