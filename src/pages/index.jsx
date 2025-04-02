@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Layout from "./Layout";
+import Layout from "../Layout";
 import Dashboard from "./Dashboard";
 import PnLDashboard from "./PnLDashboard";
 import Acquisition from "./Acquisition";
