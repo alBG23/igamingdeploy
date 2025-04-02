@@ -21,7 +21,6 @@ import {
   Calculator,
   FileWarning,
   DollarSign,
-  Github,
   FileText,
   Lock,
   CloudIcon
@@ -56,7 +55,6 @@ export default function Layout({ children, currentPageName }) {
     { icon: CloudIcon, label: "Azure Integration", page: "AzureIntegrationGuide" },
     { icon: Lock, label: "Env Variables Guide", page: "EnvironmentVariablesGuide" },
     { icon: Settings, label: "Integrations", page: "Integrations" },
-    { icon: Github, label: "GitHub Sync", page: "GitHubSync" },
     { icon: Server, label: "Production Setup", page: "ProductionSetupGuide" }
   ];
 
