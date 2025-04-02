@@ -339,6 +339,35 @@ export default function GitHubSync() {
                     
                     {renderExportCloneStatus()}
                     
+                    <Alert className="bg-blue-50 border-blue-100">
+                      <InfoIcon className="h-4 w-4 text-blue-600" />
+                      <AlertDescription className="text-blue-700">
+                        <strong>Note:</strong> This will export the source code (.js, .jsx files) and configuration, not the file structure itself. The repo structure is maintained in the exported code.
+                      </AlertDescription>
+                    </Alert>
+                    
+                    <div className="bg-blue-50 border border-blue-100 rounded-md p-4">
+                      <h3 className="font-medium text-blue-800">Export will include:</h3>
+                      <ul className="mt-2 space-y-1 text-sm text-blue-700">
+                        <li className="flex items-center gap-2">
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          React component source code
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          Custom dashboards configuration
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          Entity schemas (database models)
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          Integration settings
+                        </li>
+                      </ul>
+                    </div>
+                    
                     <div className="pt-2">
                       <Button 
                         onClick={handleExport} 
