@@ -1,7 +1,7 @@
 
+
 import React, { useState } from "react";
-import { Link, Outlet, useLocation } from "react-router-dom";
-import { createPageUrl } from "@/utils";
+import { Link } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
@@ -29,47 +29,43 @@ import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import FloatingChat from "./components/FloatingChat";
+import ExportProjectModal from "./components/ExportProjectModal";
 
-export default function Layout() {
+export default function Layout({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const location = useLocation();
   
-  const navItems = [
-    { icon: LayoutDashboard, label: "Dashboard", page: "Dashboard", path: "/" },
-    { icon: DollarSign, label: "P&L Dashboard", page: "PnLDashboard", path: "/pnl-dashboard" },
-    { icon: Users, label: "Acquisition", page: "Acquisition", path: "/acquisition" },
-    { icon: BarChart3, label: "Payments", page: "Payments", path: "/payments" },
-    { icon: LineChart, label: "Player Analysis", page: "PlayerAnalysis", path: "/player-analysis" },
-    { icon: Calendar, label: "Cohort Analysis", page: "CohortAnalysis", path: "/cohort-analysis" },
-    { icon: Calculator, label: "Player Value", page: "PlayerValueMatrix", path: "/player-value-matrix" },
-    { icon: Brain, label: "AI Insights", page: "AIInsights", path: "/ai-insights" },
-    { icon: TrendingUp, label: "Benchmarking", page: "Benchmarking", path: "/benchmarking" },
-    { icon: Bell, label: "Alerts", page: "AlertsManagement", path: "/alerts-management" },
-    { icon: FileText, label: "Custom Reports", page: "CustomReports", path: "/custom-reports" },
-    { icon: Gauge, label: "Platform Health", page: "PlatformHealth", path: "/platform-health" },
-    { icon: FileWarning, label: "Data Validation", page: "DataValidation", path: "/data-validation" },
-    { icon: Database, label: "DB Schema", page: "SchemaDiscovery", path: "/schema-discovery" },
-    { icon: Database, label: "Data Import", page: "DataImport", path: "/data-import" },
-    { icon: Server, label: "Middleware API Guide", page: "MiddlewareAPIGuide", path: "/middleware-api-guide" },
-    { icon: CloudIcon, label: "Azure Integration", page: "AzureIntegrationGuide", path: "/azure-integration-guide" },
-    { icon: Lock, label: "Env Variables Guide", page: "EnvironmentVariablesGuide", path: "/environment-variables-guide" },
-    { icon: Settings, label: "Integrations", page: "Integrations", path: "/integrations" },
-    { icon: Server, label: "Production Setup", page: "ProductionSetupGuide", path: "/production-setup-guide" }
-  ];
-
-  // Get the current page name from location
-  const getCurrentPageName = () => {
-    if (location.pathname === "/") return "Dashboard";
-    
-    const currentItem = navItems.find(item => 
-      location.pathname === item.path || 
-      location.pathname.startsWith(item.path + "/")
-    );
-    
-    return currentItem ? currentItem.page : "";
+  const handleLogout = () => {
+    // Implement your logout logic
+    console.log('Custom logout implementation needed');
   };
 
-  const currentPageName = getCurrentPageName();
+  const createPageUrl = (pageName) => {
+    // Simple page URL creation
+    return `/${pageName}`;
+  };
+
+  const navItems = [
+    { icon: LayoutDashboard, label: "Dashboard", page: "Dashboard" },
+    { icon: DollarSign, label: "P&L Dashboard", page: "PnLDashboard" },
+    { icon: Users, label: "Acquisition", page: "Acquisition" },
+    { icon: BarChart3, label: "Payments", page: "Payments" },
+    { icon: LineChart, label: "Player Analysis", page: "PlayerAnalysis" },
+    { icon: Calendar, label: "Cohort Analysis", page: "CohortAnalysis" },
+    { icon: Calculator, label: "Player Value", page: "PlayerValueMatrix" },
+    { icon: Brain, label: "AI Insights", page: "AIInsights" },
+    { icon: TrendingUp, label: "Benchmarking", page: "Benchmarking" },
+    { icon: Bell, label: "Alerts", page: "AlertsManagement" },
+    { icon: FileText, label: "Custom Reports", page: "CustomReports" },
+    { icon: Gauge, label: "Platform Health", page: "PlatformHealth" },
+    { icon: FileWarning, label: "Data Validation", page: "DataValidation" },
+    { icon: Database, label: "DB Schema", page: "SchemaDiscovery" },
+    { icon: Database, label: "Data Import", page: "DataImport" },
+    { icon: Server, label: "Middleware API Guide", page: "MiddlewareAPIGuide" },
+    { icon: CloudIcon, label: "Azure Integration", page: "AzureIntegrationGuide" },
+    { icon: Lock, label: "Env Variables Guide", page: "EnvironmentVariablesGuide" },
+    { icon: Settings, label: "Integrations", page: "Integrations" },
+    { icon: Server, label: "Production Setup", page: "ProductionSetupGuide" }
+  ];
 
   return (
     <div className="flex h-screen bg-gray-100">
@@ -103,14 +99,13 @@ export default function Layout() {
           <div className="p-2">
             <nav className="space-y-1">
               {navItems.map((item) => {
-                const isActive = location.pathname === item.path || 
-                                 (item.path !== "/" && location.pathname.startsWith(item.path + "/"));
+                const isActive = currentPageName === item.page;
                 const Icon = item.icon;
                 
                 return (
                   <Link
                     key={item.page}
-                    to={item.path}
+                    to={createPageUrl(item.page)}
                     className={cn(
                       "flex items-center gap-3 px-3 py-2 rounded-md transition-colors",
                       isActive 
@@ -135,19 +130,24 @@ export default function Layout() {
           <div className="flex items-center gap-3 mb-3">
             <Avatar className="h-9 w-9 bg-indigo-100 text-indigo-700">
               <AvatarFallback>
-                CL
+                DU
               </AvatarFallback>
             </Avatar>
             <div>
               <p className="text-sm font-medium">
-                Client User
+                Demo User
               </p>
               <p className="text-xs text-gray-500">
-                client@partner.com
+                user@example.com
               </p>
             </div>
           </div>
-          <Button variant="outline" size="sm" className="w-full flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="w-full flex items-center gap-2"
+            onClick={handleLogout}
+          >
             Sign out
           </Button>
         </div>
@@ -177,14 +177,14 @@ export default function Layout() {
             </Button>
             <Avatar className="h-8 w-8 md:hidden">
               <AvatarFallback className="bg-indigo-100 text-indigo-700">
-                CL
+                DU
               </AvatarFallback>
             </Avatar>
           </div>
         </header>
 
         <main className="flex-1 overflow-auto">
-          <Outlet />
+          {children}
         </main>
       </div>
       
@@ -192,3 +192,4 @@ export default function Layout() {
     </div>
   );
 }
+
