@@ -1,17 +1,19 @@
-// Stub Base44 client for Vercel deployment without Base44 auth
-
-export const base44 = {
-  user: {
-    getCurrentUser: async () => ({
-      id: "demo_user",
-      email: "demo@example.com",
-      name: "Demo User"
-    })
+// Stub Base44 client with no authentication
+export const base44Client = {
+  get: async (url) => {
+    console.log(`[STUB GET] ${url}`);
+    return { data: null };
   },
-  metricsData: {
-    getMetrics: async () => [
-      { date: "2024-01-15", ggr: 1000, ngr: 850 },
-      { date: "2024-01-16", ggr: 1200, ngr: 900 },
-    ]
-  }
+  post: async (url, data) => {
+    console.log(`[STUB POST] ${url}`, data);
+    return { data: null };
+  },
+  put: async (url, data) => {
+    console.log(`[STUB PUT] ${url}`, data);
+    return { data: null };
+  },
+  delete: async (url) => {
+    console.log(`[STUB DELETE] ${url}`);
+    return { data: null };
+  },
 };
