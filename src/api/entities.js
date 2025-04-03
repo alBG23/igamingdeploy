@@ -22,8 +22,3 @@ export const UserSession = base44.entities.UserSession;
 export const AlertConfig = base44.entities.AlertConfig;
 
 export const AlertHistory = base44.entities.AlertHistory;
-
-
-
-// auth sdk:
-export const User = base44.auth;
