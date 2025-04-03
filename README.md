@@ -1,20 +1,32 @@
-# Base44 App
+# iGaming Analytics
 
+A modern analytics dashboard for iGaming operators.
 
-This app was created automatically by Base44.
-It's a Vite+React app that communicates with the Base44 API.
+## Features
 
-## Running the app
+- Real-time analytics
+- Player behavior analysis
+- Revenue tracking
+- Platform health monitoring
+- Custom reporting
+- AI-powered insights
 
-```bash
-npm install
-npm run dev
-```
+## Getting Started
 
-## Building the app
+1. Clone the repository
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the development server:
+   ```bash
+   npm run dev
+   ```
+4. Build for production:
+   ```bash
+   npm run build
+   ```
 
-```bash
-npm run build
-```
+## License
 
-For more information and support, please contact Base44 support at app@base44.com.
+MIT
