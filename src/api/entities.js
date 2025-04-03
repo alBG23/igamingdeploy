@@ -1,5 +1,6 @@
-import { base44 } from './base44Client';
+import { initBase44 } from './base44Client';
 
+const base44 = initBase44();
 
 export const MetricsData = base44.entities.MetricsData;
 
