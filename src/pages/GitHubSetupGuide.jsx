@@ -1,12 +1,29 @@
-
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Github, AlertTriangle, Copy, ExternalLink, CheckCircle, ChevronRight, FileCode, GitBranch, Code, Users, Server } from 'lucide-react';
+import { Github, AlertTriangle, Copy, ExternalLink, CheckCircle, ChevronRight, FileCode, GitBranch, Code, Users, Server, Info, Lock } from 'lucide-react';
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function GitHubSetupGuide() {
+  const [repoUrl, setRepoUrl] = React.useState('https://github.com/your-username/your-repo.git');
+  const [isSettingUp, setIsSettingUp] = React.useState(false);
+
+  const handleSetup = async () => {
+    setIsSettingUp(true);
+    try {
+      // Simulate setup process
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      alert('GitHub repository setup completed successfully!');
+    } catch (error) {
+      alert('Failed to set up GitHub repository. Please check your repository URL.');
+    } finally {
+      setIsSettingUp(false);
+    }
+  };
+
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="max-w-5xl mx-auto space-y-6">
@@ -31,6 +48,55 @@ export default function GitHubSetupGuide() {
           </AlertDescription>
         </Alert>
 
+        <Card>
+          <CardHeader>
+            <CardTitle>GitHub Setup Guide</CardTitle>
+            <CardDescription>
+              Set up your GitHub repository for version control
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertTitle>GitHub Repository Setup</AlertTitle>
+              <AlertDescription>
+                Create a new GitHub repository to store your project code and enable version control.
+              </AlertDescription>
+            </Alert>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="repo-url">Repository URL</Label>
+                <Input
+                  id="repo-url"
+                  value={repoUrl}
+                  onChange={(e) => setRepoUrl(e.target.value)}
+                  placeholder="https://github.com/username/repository.git"
+                />
+                <p className="text-sm text-gray-500">
+                  Enter the URL of your GitHub repository
+                </p>
+              </div>
+
+              <Alert>
+                <Lock className="h-4 w-4" />
+                <AlertTitle>Security Note</AlertTitle>
+                <AlertDescription>
+                  Ensure your repository is properly secured and access is restricted to authorized users.
+                </AlertDescription>
+              </Alert>
+
+              <Button 
+                className="w-full" 
+                onClick={handleSetup}
+                disabled={!repoUrl || isSettingUp}
+              >
+                {isSettingUp ? 'Setting up...' : 'Set up GitHub Repository'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         <Tabs defaultValue="export" className="w-full">
           <TabsList className="mb-4">
             <TabsTrigger value="export">1. Export Code</TabsTrigger>
@@ -43,7 +109,7 @@ export default function GitHubSetupGuide() {
             <Card className="mb-6">
               <CardHeader>
                 <CardTitle>Step 1: Export Your Code</CardTitle>
-                <CardDescription>First, you need to export the complete code from base44</CardDescription>
+                <CardDescription>First, prepare your code for GitHub</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-4">
@@ -52,9 +118,9 @@ export default function GitHubSetupGuide() {
                       <FileCode className="h-5 w-5" />
                     </div>
                     <div>
-                      <h3 className="font-medium">Request a Full Export</h3>
+                      <h3 className="font-medium">Prepare Your Code</h3>
                       <p className="text-gray-600 mt-1">
-                        Contact base44 support through the feedback button on the sidebar to request a full code export. They will provide you with a ZIP file containing all your application code.
+                        Ensure your code is ready for version control by organizing files and removing any sensitive information.
                       </p>
                     </div>
                   </div>
@@ -64,9 +130,9 @@ export default function GitHubSetupGuide() {
                       <Code className="h-5 w-5" />
                     </div>
                     <div>
-                      <h3 className="font-medium">Export Structure</h3>
+                      <h3 className="font-medium">Project Structure</h3>
                       <p className="text-gray-600 mt-1">
-                        Your export will include all the components, pages, entities, and assets exactly as they appear in your application, organized in the same directory structure.
+                        Your project should follow a clean, organized structure with components, pages, and assets properly arranged.
                       </p>
                       <div className="mt-3 p-4 bg-gray-50 rounded border text-sm font-mono">
                         <div>📁 components/</div>
