@@ -1,23 +1,19 @@
 // src/api/base44Client.js
-// Bypass Base44 authentication for Vercel deployment
+// Mock implementation - no actual Base44 SDK usage
 
-// Override Base44 SDK authentication
 export function fetchWithAuth(url, options = {}) {
-  // If the URL is the Base44 login URL, return a mock response
-  if (url.includes('base44.app/login')) {
-    return Promise.resolve({
-      ok: true,
-      json: async () => ({ authenticated: true })
-    });
-  }
-  return fetch(url, options);
+  // Return mock data for any request
+  return Promise.resolve({
+    ok: true,
+    json: async () => ({ data: [] })
+  });
 }
 
 export function isAuthenticated() {
   return true;
 }
 
-// Override Base44 SDK initialization
+// Mock Base44 SDK initialization
 export function initBase44() {
   return {
     auth: {
@@ -27,7 +23,17 @@ export function initBase44() {
       logout: () => Promise.resolve()
     },
     entities: {
-      // Add your entity definitions here
+      get: async () => ({ data: [] }),
+      create: async (data) => ({ success: true, data }),
+      update: async (data) => ({ success: true, data }),
+      delete: async (id) => ({ success: true })
+    },
+    integrations: {
+      Core: {
+        SendEmail: async () => ({ success: true }),
+        InvokeLLM: async () => ({ success: true }),
+        SendSMS: async () => ({ success: true })
+      }
     }
   };
 }

@@ -1,13 +1,13 @@
-import { base44 } from './base44Client';
+// Mock integrations
+export const Core = {
+  SendEmail: async () => {
+    return { success: true };
+  }
+};
 
-
-
-
-export const Core = base44.integrations.Core;
+export const SendEmail = Core.SendEmail;
 
 export const InvokeLLM = base44.integrations.Core.InvokeLLM;
-
-export const SendEmail = base44.integrations.Core.SendEmail;
 
 export const SendSMS = base44.integrations.Core.SendSMS;
 

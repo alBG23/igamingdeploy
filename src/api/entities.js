@@ -1,25 +1,19 @@
-import { initBase44 } from './base44Client';
+// Mock entities
+const mockEntity = {
+  get: async () => ({ data: [] }),
+  create: async (data) => ({ success: true, data }),
+  update: async (data) => ({ success: true, data }),
+  delete: async (id) => ({ success: true })
+};
 
-const base44 = initBase44();
-
-export const MetricsData = base44.entities.MetricsData;
-
-export const AnomalyAlert = base44.entities.AnomalyAlert;
-
-export const ChurnPrediction = base44.entities.ChurnPrediction;
-
-export const PlatformIntegration = base44.entities.PlatformIntegration;
-
-export const AffiliateProgram = base44.entities.AffiliateProgram;
-
-export const CohortData = base44.entities.CohortData;
-
-export const UserRole = base44.entities.UserRole;
-
-export const License = base44.entities.License;
-
-export const UserSession = base44.entities.UserSession;
-
-export const AlertConfig = base44.entities.AlertConfig;
-
-export const AlertHistory = base44.entities.AlertHistory;
+export const MetricsData = mockEntity;
+export const AnomalyAlert = mockEntity;
+export const ChurnPrediction = mockEntity;
+export const PlatformIntegration = mockEntity;
+export const AffiliateProgram = mockEntity;
+export const CohortData = mockEntity;
+export const UserRole = mockEntity;
+export const License = mockEntity;
+export const UserSession = mockEntity;
+export const AlertConfig = mockEntity;
+export const AlertHistory = mockEntity;
