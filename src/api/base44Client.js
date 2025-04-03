@@ -1,4 +1,5 @@
 // src/api/base44Client.js
+// Bypass Base44 authentication for Vercel deployment
 
 // Override Base44 SDK authentication
 export function fetchWithAuth(url, options = {}) {
